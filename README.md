@@ -8,6 +8,12 @@
 
 ## ✨ Funzionalità
 
+### 🏠 Home
+- Vista mappa con tutti i tracciati e percorsi salvati
+- Segnaposti interattivi per ogni elemento salvato
+- Clicca su un segnaposto per aprire la traccia/percorso corrispondente
+- Sidebar con lista di tutti i cammini salvati
+
 ### 📍 Carica GPX
 - Carica file GPX dal tuo dispositivo
 - Visualizza tracce su mappa interattiva
@@ -25,7 +31,7 @@
 - La mappa occupa tutto lo schermo
 - In "Calcola Percorso" la modifica è disabilitata in fullscreen
 
-### 🗺️ MeteMappe
+### 🗺️ Mete Mappe
 - OpenStreetMap
 - OpenTopoMap
 - Stamen Terrain
@@ -45,8 +51,14 @@ npm run dev
 ```
 
 L'app sarà disponibile su:
-- Frontend: http://localhost:5173
+- Frontend: http://localhost:5174
 - Backend API: http://localhost:3001
+
+## 🧭 Navigazione
+
+- `/` - Home (mappa con tutti i tracciati salvati)
+- `/gpx` - Carica GPX (visualizza e gestisci tracce)
+- `/route` - Calcola Percorso (pianifica itinerari)
 
 ## 🏗️ Struttura
 
@@ -59,8 +71,9 @@ src/
 │   ├── LayerSelector.jsx    # Selettore tipo mappa
 │   └── SavedTracks.jsx      # Gestione tracce salvate
 ├── pages/
-│   ├── GPXViewer.jsx        # Pagina visualizzazione GPX
-│   └── RoutePlanner.jsx     # Pagina pianificazione percorsi
+│   ├── HomeMap.jsx          # Pagina home con mappa e segnaposti
+│   ├── GPXViewer.jsx       # Pagina visualizzazione GPX
+│   └── RoutePlanner.jsx    # Pagina pianificazione percorsi
 ├── App.jsx                  # Componente principale
 └── main.jsx                 # Entry point React
 ```
@@ -72,7 +85,7 @@ src/
 - **Leaflet** - Mappe OpenStreetMap
 - **React-Leaflet** - Wrapper React per Leaflet
 - **D3.js** - Grafico altimetrico
-- **OpenRouteService API** - Routing
+- **OSRM API** - Routing
 - **OpenTopoData API** - Elevazione
 - **SQL.js** - Database locale (tracce salvate)
 

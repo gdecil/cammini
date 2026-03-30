@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Map from '../components/Map'
 import FileUpload from '../components/FileUpload'
 import SavedTracks from '../components/SavedTracks'
@@ -17,10 +18,23 @@ export default function GPXViewer() {
   const [isProfileDetached, setIsProfileDetached] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(null) // 0-1 value for cross-highlight
+  const [searchParams] = useSearchParams()
+  const trackIdParam = searchParams.get('trackId')
 
   useEffect(() => {
     loadSavedTracks()
   }, [])
+
+  // Carica automaticamente la traccia se specificato nella query string
+  useEffect(() => {
+    if (trackIdParam && Object.keys(savedTracks).length > 0) {
+      // Cerca la traccia per ID
+      const trackEntry = Object.entries(savedTracks).find(([name, track]) => track.id === trackIdParam)
+      if (trackEntry) {
+        handleLoadTrack(trackEntry[0])
+      }
+    }
+  }, [trackIdParam, savedTracks])
 
   const loadSavedTracks = async () => {
     try {

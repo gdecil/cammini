@@ -65,15 +65,85 @@ function MapController({ bounds }) {
 function MapEvents({ onMapClick }) {
   const map = useMap()
   useEffect(() => {
-    map.on('click', onMapClick)
-    return () => {
-      map.off('click', onMapClick)
+    if (onMapClick) {
+      map.on('click', onMapClick)
+      return () => {
+        map.off('click', onMapClick)
+      }
     }
   }, [map, onMapClick])
   return null
 }
 
+// Component for displaying clickable markers
+function MarkersLayer({ markers, onMarkerClick }) {
+  const map = useMap()
+  const markersRef = useRef({})
+  
+  useEffect(() => {
+    // Clean up old markers
+    Object.values(markersRef.current).forEach(marker => {
+      if (marker) marker.remove()
+    })
+    markersRef.current = {}
+    
+    if (!markers || markers.length === 0) return
+    
+    // Create new markers for each item
+    markers.forEach((markerData, index) => {
+      const color = markerData.type === 'track' ? '#3498db' : '#e74c3c'
+      const icon = L.divIcon({
+        className: 'home-marker',
+        html: `<div style="
+          position: relative;
+          background-color: ${color};
+          width: 36px;
+          height: 36px;
+          border-radius: 50% 50% 50% 0;
+          border: 3px solid white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+          transform: rotate(-45deg);
+        "></div>
+        <span style="
+          position: absolute;
+          top: -28px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: white;
+          color: ${color};
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-weight: bold;
+          white-space: nowrap;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        ">${markerData.name}</span>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 36],
+      })
+      
+      const marker = L.marker(markerData.position, { icon })
+      
+      if (onMarkerClick) {
+        marker.on('click', () => onMarkerClick(markerData))
+      }
+      
+      marker.addTo(map)
+      markersRef.current[index] = marker
+    })
+    
+    return () => {
+      Object.values(markersRef.current).forEach(marker => {
+        if (marker) marker.remove()
+      })
+    }
+  }, [markers, map, onMarkerClick])
+  
+  return null
+}
+
 // Draggable Waypoints Layer Component
+
 function DraggableWaypoints({ waypoints, onWaypointDragEnd, draggable = true }) {
   const map = useMap()
   const markersRef = useRef({})
@@ -129,7 +199,9 @@ export default function Map({
   onWaypointDragEnd = null,
   draggable = true,
   selectedIndex = null, // 0-1 value for highlighted position
-  onHover = null // callback for hover
+  onHover = null, // callback for hover
+  markers = [], // markers for home page
+  onMarkerClick = null // callback for marker click
 }) {
   const allCoords = [...trackCoordinates, ...routeCoordinates]
   const waypointPositions = waypoints.map(wp => wp.position)
@@ -150,6 +222,11 @@ export default function Map({
           attribution={layer.attribution}
           url={layer.url}
         />
+        
+        {/* Clickable markers for home page */}
+        {markers.length > 0 && onMarkerClick && (
+          <MarkersLayer markers={markers} onMarkerClick={onMarkerClick} />
+        )}
         
         {trackCoordinates.length > 0 && (
           <Polyline 

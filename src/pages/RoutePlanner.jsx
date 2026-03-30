@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Map from '../components/Map'
 import LayerSelector from '../components/LayerSelector'
 import ElevationProfile from '../components/ElevationProfile'
@@ -27,10 +28,22 @@ export default function RoutePlanner() {
   const [draggedIndex, setDraggedIndex] = useState(null) // Track which item is being dragged
   const [isFullscreen, setIsFullscreen] = useState(false) // Fullscreen map mode
   const [selectedIndex, setSelectedIndex] = useState(null) // 0-1 value for cross-highlight
+  const [searchParams] = useSearchParams()
+  const routeIdParam = searchParams.get('routeId')
 
   useEffect(() => {
     loadSavedRoutes()
   }, [])
+
+  // Carica automaticamente il percorso se specificato nella query string
+  useEffect(() => {
+    if (routeIdParam && savedRoutes.length > 0) {
+      const route = savedRoutes.find(r => r.id === routeIdParam)
+      if (route) {
+        handleLoadRoute(route)
+      }
+    }
+  }, [routeIdParam, savedRoutes])
 
   const loadSavedRoutes = async () => {
     try {

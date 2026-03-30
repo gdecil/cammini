@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Link, NavLink } from 'react-router-dom'
+import HomeMap from './pages/HomeMap'
 import GPXViewer from './pages/GPXViewer'
 import RoutePlanner from './pages/RoutePlanner'
 import './App.css'
@@ -11,6 +12,9 @@ function App() {
           <h1>🏔️ Cammini</h1>
           <nav className="navbar">
             <NavLink to="/" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              Home
+            </NavLink>
+            <NavLink to="/gpx" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
               Carica GPX
             </NavLink>
             <NavLink to="/route" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
@@ -20,7 +24,8 @@ function App() {
         </header>
         <main className="main">
           <Routes>
-            <Route path="/" element={<GPXViewer />} />
+            <Route path="/" element={<HomeMap />} />
+            <Route path="/gpx" element={<GPXViewer />} />
             <Route path="/route" element={<RoutePlanner />} />
           </Routes>
         </main>
