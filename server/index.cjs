@@ -1,0 +1,393 @@
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const initSqlJs = require('sql.js');
+const fs = require('fs');
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+const DB_PATH = './gpx_viewer.db';
+
+let db;
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+
+// Initialize database
+async function initDatabase() {
+    const SQL = await initSqlJs();
+
+    try {
+        if (fs.existsSync(DB_PATH)) {
+            const buffer = fs.readFileSync(DB_PATH);
+            db = new SQL.Database(buffer);
+            console.log('Loaded existing database');
+        } else {
+            db = new SQL.Database();
+            console.log('Created new database');
+        }
+    } catch (err) {
+        db = new SQL.Database();
+        console.log('Created new database');
+    }
+
+    db.run(`CREATE TABLE IF NOT EXISTS tracks (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        coordinates TEXT NOT NULL,
+        elevation TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
+    db.run(`CREATE TABLE IF NOT EXISTS routes (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        start_lat REAL NOT NULL,
+        start_lng REAL NOT NULL,
+        end_lat REAL NOT NULL,
+        end_lng REAL NOT NULL,
+        distance TEXT,
+        coordinates TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        elevation TEXT,
+        waypoints TEXT,
+        ascent INTEGER,
+        descent INTEGER,
+        min_ele INTEGER,
+        max_ele INTEGER
+    )`);
+
+    // Add missing columns to existing tables
+    const columnsToAdd = [
+        { table: 'tracks', col: 'elevation', type: 'TEXT' },
+        { table: 'routes', col: 'elevation', type: 'TEXT' },
+        { table: 'routes', col: 'waypoints', type: 'TEXT' },
+        { table: 'routes', col: 'ascent', type: 'INTEGER' },
+        { table: 'routes', col: 'descent', type: 'INTEGER' },
+        { table: 'routes', col: 'min_ele', type: 'INTEGER' },
+        { table: 'routes', col: 'max_ele', type: 'INTEGER' }
+    ];
+    
+    columnsToAdd.forEach(({ table, col, type }) => {
+        try {
+            db.run(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
+            console.log(`Added ${col} to ${table}`);
+        } catch (e) {
+            // Column already exists, ignore
+        }
+    });
+
+    saveDatabase();
+    console.log('Database initialized');
+}
+
+function saveDatabase() {
+    if (db) {
+        const data = db.export();
+        const buffer = Buffer.from(data);
+        fs.writeFileSync(DB_PATH, buffer);
+    }
+}
+
+// ===== UNIFIED API =====
+
+// Get all saved items (tracks + routes)
+app.get('/api/saved', (req, res) => {
+    try {
+        const tracksResult = db.exec('SELECT id, name, coordinates, elevation, created_at FROM tracks ORDER BY created_at DESC');
+        const routesResult = db.exec('SELECT id, name, start_lat, start_lng, end_lat, end_lng, distance, coordinates, elevation, waypoints, ascent, descent, min_ele, max_ele, created_at FROM routes ORDER BY created_at DESC');
+        
+        const items = [];
+        
+        // Add tracks
+        if (tracksResult.length > 0) {
+            tracksResult[0].values.forEach(row => {
+                items.push({
+                    id: row[0],
+                    name: row[1],
+                    type: 'track',
+                    coordinates: row[2] ? JSON.parse(row[2]) : [],
+                    elevation: row[3] ? JSON.parse(row[3]) : null,
+                    created_at: row[4]
+                });
+            });
+        }
+        
+        // Add routes
+        if (routesResult.length > 0) {
+            routesResult[0].values.forEach(row => {
+                items.push({
+                    id: row[0],
+                    name: row[1],
+                    type: 'route',
+                    startLat: row[2],
+                    startLng: row[3],
+                    endLat: row[4],
+                    endLng: row[5],
+                    distance: row[6],
+                    coordinates: row[7] ? JSON.parse(row[7]) : [],
+                    elevation: row[8] ? JSON.parse(row[8]) : null,
+                    waypoints: row[9] ? JSON.parse(row[9]) : [],
+                    ascent: row[10] || null,
+                    descent: row[11] || null,
+                    minElevation: row[12] || null,
+                    maxElevation: row[13] || null,
+                    created_at: row[14]
+                });
+            });
+        }
+        
+        // Sort by created_at descending
+        items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        
+        res.json(items);
+    } catch (error) {
+        console.error('Error fetching saved items:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete saved item (by id, regardless of type)
+app.delete('/api/saved/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Try to delete from tracks first
+        db.run('DELETE FROM tracks WHERE id = ?', [id]);
+        // Then try routes
+        db.run('DELETE FROM routes WHERE id = ?', [id]);
+        
+        saveDatabase();
+        res.json({ message: 'Item deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Rename saved item
+app.put('/api/saved/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name } = req.body;
+        
+        if (!name) {
+            return res.status(400).json({ error: 'Name is required' });
+        }
+        
+        // Try tracks first, then routes
+        const trackResult = db.exec('SELECT id FROM tracks WHERE id = ?', [id]);
+        if (trackResult.length > 0 && trackResult[0].values.length > 0) {
+            db.run('UPDATE tracks SET name = ? WHERE id = ?', [name, id]);
+        } else {
+            db.run('UPDATE routes SET name = ? WHERE id = ?', [name, id]);
+        }
+        
+        saveDatabase();
+        res.json({ message: 'Item renamed successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ===== LEGACY TRACKS API (kept for compatibility) =====
+
+app.get('/api/tracks', (req, res) => {
+    try {
+        const result = db.exec('SELECT * FROM tracks ORDER BY created_at DESC');
+        if (result.length === 0) return res.json([]);
+        
+        const tracks = result[0].values.map(row => ({
+            id: row[0],
+            name: row[1],
+            coordinates: row[2] || '[]',
+            created_at: row[3],
+            elevation: row[4] || null
+        }));
+        res.json(tracks);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/tracks', (req, res) => {
+    try {
+        const { name, coordinates, elevation } = req.body;
+        if (!name || !coordinates) {
+            return res.status(400).json({ error: 'Name and coordinates are required' });
+        }
+
+        const trackId = require('crypto').randomUUID();
+        const elevationStr = elevation ? JSON.stringify(elevation) : null;
+        db.run('INSERT INTO tracks (id, name, coordinates, elevation) VALUES (?, ?, ?, ?)', 
+            [trackId, name, JSON.stringify(coordinates), elevationStr]);
+        saveDatabase();
+
+        res.json({ id: trackId, message: 'Track saved successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/tracks/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        db.run('DELETE FROM tracks WHERE id = ?', [id]);
+        saveDatabase();
+        res.json({ message: 'Track deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/api/tracks/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name } = req.body;
+        if (!name) {
+            return res.status(400).json({ error: 'Name is required' });
+        }
+        db.run('UPDATE tracks SET name = ? WHERE id = ?', [name, id]);
+        saveDatabase();
+        res.json({ message: 'Track renamed successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ===== LEGACY ROUTES API (kept for compatibility) =====
+
+app.get('/api/routes', (req, res) => {
+    try {
+        const result = db.exec('SELECT id, name, start_lat, start_lng, end_lat, end_lng, distance, coordinates, elevation, waypoints, ascent, descent, min_ele, max_ele, created_at FROM routes ORDER BY created_at DESC');
+        if (result.length === 0) return res.json([]);
+        
+        const routes = result[0].values.map(row => ({
+            id: row[0],
+            name: row[1],
+            start_lat: row[2],
+            start_lng: row[3],
+            end_lat: row[4],
+            end_lng: row[5],
+            distance: row[6],
+            coordinates: row[7] ? (typeof row[7] === 'string' ? JSON.parse(row[7]) : row[7]) : [],
+            elevation: row[8] ? (typeof row[8] === 'string' ? JSON.parse(row[8]) : row[8]) : null,
+            waypoints: row[9] ? (typeof row[9] === 'string' ? JSON.parse(row[9]) : row[9]) : [],
+            ascent: row[10],
+            descent: row[11],
+            min_ele: row[12],
+            max_ele: row[13],
+            created_at: row[14]
+        }));
+        res.json(routes);
+    } catch (error) {
+        console.error('Error fetching routes:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/routes', (req, res) => {
+    try {
+        const { name, startLat, startLng, endLat, endLng, distance, coordinates, elevation, waypoints, ascent, descent, minElevation, maxElevation } = req.body;
+        if (!name || !coordinates) {
+            return res.status(400).json({ error: 'All route fields are required' });
+        }
+
+        const routeId = require('crypto').randomUUID();
+        db.run(`INSERT INTO routes (id, name, start_lat, start_lng, end_lat, end_lng, distance, coordinates, elevation, waypoints, ascent, descent, min_ele, max_ele)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [routeId, name, startLat, startLng, endLat, endLng, distance, 
+             JSON.stringify(coordinates), 
+             elevation ? JSON.stringify(elevation) : null,
+             waypoints ? JSON.stringify(waypoints) : null,
+             ascent || null, descent || null, 
+             minElevation || null, maxElevation || null]);
+        saveDatabase();
+
+        res.json({ id: routeId, message: 'Route saved successfully' });
+    } catch (error) {
+        console.error('Error saving route:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/routes/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        db.run('DELETE FROM routes WHERE id = ?', [id]);
+        saveDatabase();
+        res.json({ message: 'Route deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/api/routes/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name } = req.body;
+        
+        if (!name) {
+            return res.status(400).json({ error: 'Name is required' });
+        }
+        
+        db.run('UPDATE routes SET name = ? WHERE id = ?', [name, id]);
+        saveDatabase();
+        res.json({ message: 'Route renamed successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'OK' });
+});
+
+// Proxy endpoint for OpenTopoData to bypass CORS
+app.post('/api/elevation', async (req, res) => {
+    let { locations } = req.body;
+    
+    if (!locations || !Array.isArray(locations)) {
+        return res.status(400).json({ error: 'Locations array required', received: typeof locations });
+    }
+    
+    // Limit to 100 locations (API limit)
+    if (locations.length > 100) {
+        const step = Math.floor(locations.length / 100)
+        locations = locations.filter((_, i) => i % step === 0 || i === locations.length - 1).slice(0, 100)
+    }
+    
+    const locationString = locations.map(loc => 
+        `${loc.lat.toFixed(6)},${loc.lng.toFixed(6)}`
+    ).join('|');
+    
+    console.log('Location count:', locations.length);
+    
+    try {
+        const url = `https://api.opentopodata.org/v1/srtm30m?locations=${encodeURIComponent(locationString)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        console.log('OpenTopoData response status:', data.status);
+        res.json(data);
+    } catch (error) {
+        console.error('Error calling OpenTopoData:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Start server
+async function start() {
+    await initDatabase();
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on http://0.0.0.0:${PORT}`);
+    });
+}
+
+start();
+
+process.on('SIGINT', () => {
+    console.log('Saving database...');
+    if (db) saveDatabase();
+    process.exit(0);
+});

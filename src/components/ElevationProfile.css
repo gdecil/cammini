@@ -1,0 +1,110 @@
+.elevation-profile {
+  background: white;
+  padding: 0.75rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.elevation-profile.in-container {
+  position: relative;
+  bottom: auto;
+  left: auto;
+}
+
+.elevation-profile.draggable {
+  cursor: grab;
+}
+
+.elevation-profile.draggable:active {
+  cursor: grabbing;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+.elevation-profile.in-container h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: #2c3e50;
+  padding-left: 20px;
+}
+
+.chart-container {
+  width: 100%;
+  min-height: 100px;
+  position: relative;
+}
+
+.chart-container svg {
+  display: block;
+  width: 100%;
+}
+
+/* Drag handle */
+.drag-handle {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  cursor: grab;
+  padding: 2px 6px;
+  color: #999;
+  font-size: 14px;
+  user-select: none;
+  transition: color 0.2s;
+  z-index: 10;
+}
+
+.drag-handle:hover {
+  color: #666;
+}
+
+/* Resize handle */
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 5px 10px;
+  cursor: nwse-resize;
+  font-size: 14px;
+  color: #999;
+  background: linear-gradient(135deg, transparent 50%, #f0f0f0 50%);
+  border-radius: 0 0 8px 0;
+}
+
+.resize-handle:hover {
+  color: #666;
+}
+
+/* Hover indicator - follows mouse on chart */
+.hover-indicator {
+  position: absolute;
+  pointer-events: none;
+  z-index: 100;
+  transform: translate(-50%, -100%);
+  margin-top: -10px;
+}
+
+.indicator-dot {
+  width: 12px;
+  height: 12px;
+  background: #e74c3c;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.indicator-tooltip {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.resize-handle:hover {
+  color: #4caf50;
+}
