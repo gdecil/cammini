@@ -1,6 +1,35 @@
 import { useState } from 'react'
 import './SavedTracks.css'
 
+// Genera GPX dalla traccia
+const generateGPX = (track) => {
+  const { coordinates, elevation, name } = track
+  if (!coordinates || coordinates.length === 0) return null
+  
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Cammini">\n  <metadata>\n    <name>' + name + '</name>\n  </metadata>\n<trk>\n<trkseg>\n'
+  
+  coordinates.forEach((coord, i) => {
+    const ele = elevation && elevation[i] !== undefined ? elevation[i] : 0
+    gpx += `    <trkpt lat="${coord[0]}" lon="${coord[1]}">\n      <ele>${ele}</ele>\n    </trkpt>\n`
+  })
+  
+  gpx += '</trkseg>\n</trk>\n</gpx>'
+  return gpx
+}
+
+// Scarica il file GPX
+const downloadGPX = (gpx, filename) => {
+  const blob = new Blob([gpx], { type: 'application/gpx+xml' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename.endsWith('.gpx') ? filename : filename + '.gpx'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, onRename, hasTrack }) {
   const [sortBy, setSortBy] = useState('date') // 'name' or 'date'
   const [sortOrder, setSortOrder] = useState('desc') // 'asc' or 'desc'
@@ -42,6 +71,13 @@ export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, o
   const startRename = (name) => {
     setEditingName(name)
     setNewName(name)
+  }
+
+  const handleExport = (track) => {
+    const gpx = generateGPX(track)
+    if (gpx) {
+      downloadGPX(gpx, track.name)
+    }
   }
 
   return (
@@ -112,6 +148,13 @@ export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, o
                   onClick={() => onLoad(track.name)}
                 >
                   Carica
+                </button>
+                <button 
+                  className="small-btn"
+                  onClick={() => handleExport(track)}
+                  title="Esporta come GPX"
+                >
+                  📥
                 </button>
                 <button 
                   className="small-btn danger"

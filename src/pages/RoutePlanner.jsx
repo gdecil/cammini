@@ -520,7 +520,7 @@ export default function RoutePlanner() {
   }
 
   // Generate GPX-like content for profile using real route coordinates
-  const generateRouteGPX = () => {
+  const generateRouteGPXForProfile = () => {
     if (!elevationData || !elevationData.elevations || elevationData.elevations.length === 0) {
       return null
     }
@@ -549,7 +549,61 @@ export default function RoutePlanner() {
     return gpx
   }
 
-  const routeGPXContent = generateRouteGPX()
+  // Generate GPX (without waypoints, with elevation interpolation)
+  const generateRouteGPX = (route) => {
+    const { coordinates, elevation, name } = route
+    if (!coordinates || coordinates.length === 0) return null
+    
+    let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Cammini">\n  <metadata>\n    <name>' + name + '</name>\n  </metadata>\n<trk>\n<trkseg>\n'
+    
+    const numCoords = coordinates.length
+    const numElevations = elevation ? elevation.length : 0
+    
+    if (numElevations > 0) {
+      // Interpolate elevation for each coordinate
+      coordinates.forEach((coord, i) => {
+        const eleIndex = numElevations > 1 ? (i / (numCoords - 1)) * (numElevations - 1) : 0
+        const eleLower = Math.floor(eleIndex)
+        const eleUpper = Math.min(eleLower + 1, numElevations - 1)
+        const eleFraction = eleIndex - eleLower
+        const ele = elevation[eleLower] !== undefined && elevation[eleUpper] !== undefined
+          ? elevation[eleLower] + (elevation[eleUpper] - elevation[eleLower]) * eleFraction
+          : (elevation[eleLower] || 0)
+        gpx += `    <trkpt lat="${coord[0]}" lon="${coord[1]}">\n      <ele>${ele.toFixed(1)}</ele>\n    </trkpt>\n`
+      })
+    } else {
+      // No elevation data
+      coordinates.forEach((coord) => {
+        gpx += `    <trkpt lat="${coord[0]}" lon="${coord[1]}">\n      <ele>0</ele>\n    </trkpt>\n`
+      })
+    }
+    
+    gpx += '</trkseg>\n</trk>\n</gpx>'
+    return gpx
+  }
+
+  // Download GPX file
+  const downloadGPX = (gpx, filename) => {
+    const blob = new Blob([gpx], { type: 'application/gpx+xml' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename.endsWith('.gpx') ? filename : filename + '.gpx'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  // Handle export route
+  const handleExportRoute = (route) => {
+    const gpx = generateRouteGPX(route)
+    if (gpx) {
+      downloadGPX(gpx, route.name)
+    }
+  }
+
+  const routeGPXContent = generateRouteGPXForProfile()
   const routeNames = Object.keys(savedRoutes)
 
   // Get markers for map (waypoints with valid coords)
@@ -778,6 +832,7 @@ export default function RoutePlanner() {
                   </div>
                   <div className="route-actions">
                     <button className="small-btn" onClick={() => handleLoadRoute(route)}>Carica</button>
+                    <button className="small-btn" onClick={() => handleExportRoute(route)} title="Esporta GPX">📥</button>
                     <button className="small-btn" onClick={() => handleRenameRoute(route)} title="Rinomina">✏️</button>
                     <button className="small-btn danger" onClick={() => handleDeleteRoute(route)}>🗑️</button>
                   </div>

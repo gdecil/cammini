@@ -26,12 +26,17 @@
 - Calcola distanza e dislivelli
 - Esporta percorsi come GPX
 
-### 🖥️ Modalità Fullscreen
+### 📥 Esporta GPX
+- Esporta tracce caricate come file GPX
+- Esporta itinerari calcolati come GPX (con waypoint separati)
+- Disponibile dalla Home, da Carica GPX e da Calcola Percorso
+
+### �️ Modalità Fullscreen
 - Premi ⛶ per massima immersività
 - La mappa occupa tutto lo schermo
 - In "Calcola Percorso" la modifica è disabilitata in fullscreen
 
-### 🗺️ Mete Mappe
+### �🗺️ Mete Mappe
 - OpenStreetMap
 - OpenTopoMap
 - Stamen Terrain

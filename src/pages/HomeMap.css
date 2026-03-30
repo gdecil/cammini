@@ -80,6 +80,21 @@
   transition: all 0.2s ease;
 }
 
+.home-sidebar .export-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  margin-left: auto;
+}
+
+.home-sidebar .export-btn:hover {
+  background: #e9ecef;
+}
+
 .home-sidebar .item-card:hover {
   background: #e9ecef;
   transform: translateX(4px);

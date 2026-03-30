@@ -6,6 +6,82 @@ import './HomeMap.css'
 
 const API_URL = '/api'
 
+// Generate GPX for tracks
+const generateTrackGPX = (track) => {
+  const { coordinates, elevation, name } = track
+  if (!coordinates || coordinates.length === 0) return null
+  
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Cammini">\n  <metadata>\n    <name>' + name + '</name>\n  </metadata>\n<trk>\n<trkseg>\n'
+  
+  coordinates.forEach((coord, i) => {
+    const ele = elevation && elevation[i] !== undefined ? elevation[i] : 0
+    gpx += `    <trkpt lat="${coord[0]}" lon="${coord[1]}">\n      <ele>${ele}</ele>\n    </trkpt>\n`
+  })
+  
+  gpx += '</trkseg>\n</trk>\n</gpx>'
+  return gpx
+}
+
+// Generate GPX for routes (without waypoints, with elevation interpolation)
+const generateRouteGPX = (route) => {
+  const { coordinates, elevation, name } = route
+  if (!coordinates || coordinates.length === 0) return null
+  
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Cammini">\n  <metadata>\n    <name>' + name + '</name>\n  </metadata>\n<trk>\n<trkseg>\n'
+  
+  const numCoords = coordinates.length
+  const numElevations = elevation ? elevation.length : 0
+  
+  if (numElevations > 0) {
+    // Interpolate elevation for each coordinate
+    coordinates.forEach((coord, i) => {
+      const eleIndex = numElevations > 1 ? (i / (numCoords - 1)) * (numElevations - 1) : 0
+      const eleLower = Math.floor(eleIndex)
+      const eleUpper = Math.min(eleLower + 1, numElevations - 1)
+      const eleFraction = eleIndex - eleLower
+      const ele = elevation[eleLower] !== undefined && elevation[eleUpper] !== undefined
+        ? elevation[eleLower] + (elevation[eleUpper] - elevation[eleLower]) * eleFraction
+        : (elevation[eleLower] || 0)
+      gpx += `    <trkpt lat="${coord[0]}" lon="${coord[1]}">\n      <ele>${ele.toFixed(1)}</ele>\n    </trkpt>\n`
+    })
+  } else {
+    // No elevation data
+    coordinates.forEach((coord) => {
+      gpx += `    <trkpt lat="${coord[0]}" lon="${coord[1]}">\n      <ele>0</ele>\n    </trkpt>\n`
+    })
+  }
+  
+  gpx += '</trkseg>\n</trk>\n</gpx>'
+  return gpx
+}
+
+// Download GPX file
+const downloadGPX = (gpx, filename) => {
+  const blob = new Blob([gpx], { type: 'application/gpx+xml' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename.endsWith('.gpx') ? filename : filename + '.gpx'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// Handle export item
+const handleExportItem = (item, e) => {
+  e.stopPropagation()
+  let gpx
+  if (item.type === 'route') {
+    gpx = generateRouteGPX(item)
+  } else {
+    gpx = generateTrackGPX(item)
+  }
+  if (gpx) {
+    downloadGPX(gpx, item.name)
+  }
+}
+
 export default function HomeMap() {
   const [savedItems, setSavedItems] = useState([])
   const [currentLayer, setCurrentLayer] = useState('OpenStreetMap')
@@ -113,6 +189,13 @@ export default function HomeMap() {
                 {item.distance && (
                   <span className="item-distance">{item.distance}</span>
                 )}
+                <button 
+                  className="export-btn"
+                  onClick={(e) => handleExportItem(item, e)}
+                  title="Esporta GPX"
+                >
+                  📥
+                </button>
               </li>
             ))}
           </ul>
