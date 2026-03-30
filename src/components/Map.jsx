@@ -97,29 +97,29 @@ function MarkersLayer({ markers, onMarkerClick }) {
         html: `<div style="
           position: relative;
           background-color: ${color};
-          width: 36px;
-          height: 36px;
+          width: 18px;
+          height: 18px;
           border-radius: 50% 50% 50% 0;
-          border: 3px solid white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+          border: 2px solid white;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.4);
           transform: rotate(-45deg);
         "></div>
         <span style="
           position: absolute;
-          top: -28px;
+          top: -18px;
           left: 50%;
           transform: translateX(-50%);
           background: white;
           color: ${color};
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-size: 11px;
+          padding: 1px 6px;
+          border-radius: 3px;
+          font-size: 9px;
           font-weight: bold;
           white-space: nowrap;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+          box-shadow: 0 1px 2px rgba(0,0,0,0.2);
         ">${markerData.name}</span>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 36],
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
       })
       
       const marker = L.marker(markerData.position, { icon })

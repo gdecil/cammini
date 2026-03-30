@@ -291,7 +291,9 @@
 }
 
 .route-profile-container {
-  position: relative;
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
   z-index: 1500;
   max-width: 400px;
 }
@@ -461,4 +463,33 @@
     height: 44px;
     font-size: 22px;
   }
+}
+
+/* Resizable sidebar */
+.route-planner .sidebar {
+  width: 380px;
+  min-width: 280px;
+  max-width: 550px;
+  overflow-y: auto;
+  background: #f8f9fa;
+  padding: 1rem;
+  border-left: 1px solid #dee2e6;
+  position: relative;
+}
+
+/* Resize handle for sidebar */
+.sidebar-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  background: linear-gradient(90deg, #dee2e6 0%, transparent 100%);
+  transition: background 0.2s;
+  z-index: 10;
+}
+
+.sidebar-resize-handle:hover {
+  background: linear-gradient(90deg, #3498db 0%, transparent 100%);
 }

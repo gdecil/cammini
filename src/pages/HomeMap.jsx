@@ -88,10 +88,36 @@ export default function HomeMap() {
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
   const [markers, setMarkers] = useState([])
+  const [sidebarWidth, setSidebarWidth] = useState(280)
+  const [isResizing, setIsResizing] = useState(false)
 
   useEffect(() => {
     loadSavedItems()
   }, [])
+
+  // Sidebar resize handlers
+  const handleResizeStart = (e) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return
+      const newWidth = window.innerWidth - e.clientX
+      setSidebarWidth(Math.min(400, Math.max(200, newWidth)))
+    }
+    const handleMouseUp = () => setIsResizing(false)
+    
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing])
 
   const loadSavedItems = async () => {
     try {
@@ -172,7 +198,8 @@ export default function HomeMap() {
         />
       )}
       
-      <div className="home-sidebar">
+      <div className="home-sidebar" style={{ width: sidebarWidth }}>
+        <div className="sidebar-resize-handle" onMouseDown={handleResizeStart} />
         <h2>I Tuoi Cammini</h2>
         {savedItems.length === 0 ? (
           <p className="empty-message">Nessun elemento salvato</p>

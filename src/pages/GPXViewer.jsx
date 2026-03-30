@@ -18,8 +18,34 @@ export default function GPXViewer() {
   const [isProfileDetached, setIsProfileDetached] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(null) // 0-1 value for cross-highlight
+  const [sidebarWidth, setSidebarWidth] = useState(350)
+  const [isResizing, setIsResizing] = useState(false)
   const [searchParams] = useSearchParams()
   const trackIdParam = searchParams.get('trackId')
+
+  // Sidebar resize handlers
+  const handleResizeStart = (e) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return
+      const newWidth = window.innerWidth - e.clientX
+      setSidebarWidth(Math.min(500, Math.max(250, newWidth)))
+    }
+    const handleMouseUp = () => setIsResizing(false)
+    
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing])
 
   useEffect(() => {
     loadSavedTracks()
@@ -370,13 +396,15 @@ export default function GPXViewer() {
               gpxContent={gpxContent} 
               isOverlay={true}
               selectedIndex={selectedIndex}
+              onHover={(index) => setSelectedIndex(index)}
             />
           </div>
         )}
       </div>
       
       {!isFullscreen && (
-        <div className="sidebar">
+        <div className="sidebar" style={{ width: sidebarWidth }}>
+          <div className="sidebar-resize-handle" onMouseDown={handleResizeStart} />
           <FileUpload onFileLoad={handleFileLoad} />
           
           {/* Show toggle button when profile is visible */}

@@ -28,8 +28,34 @@ export default function RoutePlanner() {
   const [draggedIndex, setDraggedIndex] = useState(null) // Track which item is being dragged
   const [isFullscreen, setIsFullscreen] = useState(false) // Fullscreen map mode
   const [selectedIndex, setSelectedIndex] = useState(null) // 0-1 value for cross-highlight
+  const [sidebarWidth, setSidebarWidth] = useState(380)
+  const [isResizing, setIsResizing] = useState(false)
   const [searchParams] = useSearchParams()
   const routeIdParam = searchParams.get('routeId')
+
+  // Sidebar resize handlers
+  const handleResizeStart = (e) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return
+      const newWidth = window.innerWidth - e.clientX
+      setSidebarWidth(Math.min(550, Math.max(280, newWidth)))
+    }
+    const handleMouseUp = () => setIsResizing(false)
+    
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing])
 
   useEffect(() => {
     loadSavedRoutes()
@@ -671,7 +697,8 @@ export default function RoutePlanner() {
       </div>
 
       {!isFullscreen && (
-        <div className="sidebar">
+        <div className="sidebar" style={{ width: sidebarWidth }}>
+          <div className="sidebar-resize-handle" onMouseDown={handleResizeStart} />
         <div className="coord-panel">
           <h3>🗺️ Itinerario Multi-Tappa</h3>
           <p className="hint">Aggiungi punti di passaggio per creare il tuo itinerario</p>
