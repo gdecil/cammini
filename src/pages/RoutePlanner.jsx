@@ -107,15 +107,44 @@ function decodePolyline6(str, precision) {
 const WAYPOINT_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e']
 
 // Collapsible Section Component
-function CollapsibleSection({ id, title, defaultOpen, children, className = '' }) {
+function CollapsibleSection({ id, title, defaultOpen, children, className = '', resizable = false, onResize }) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
+  const sectionRef = useRef(null)
+  
+  const handleResizeStart = (e) => {
+    if (!onResize) return
+    e.preventDefault()
+    e.stopPropagation()
+    const startY = e.clientY
+    const startHeight = sectionRef.current ? sectionRef.current.offsetHeight : 200
+    
+    const handleMouseMove = (moveEvent) => {
+      const delta = moveEvent.clientY - startY
+      const newHeight = Math.max(100, Math.min(600, startHeight + delta))
+      onResize(newHeight)
+    }
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+  
   return (
-    <div className={`collapsible-section ${isOpen ? 'open' : 'collapsed'} ${className}`}>
+    <div className={`collapsible-section ${isOpen ? 'open' : 'collapsed'} ${className}`} ref={sectionRef}>
       <div className="section-header" onClick={() => setIsOpen(!isOpen)}>
         <span className="section-arrow">{isOpen ? '▼' : '▶'}</span>
         <span className="section-title">{title}</span>
       </div>
       {isOpen && <div className="section-content">{children}</div>}
+      {isOpen && resizable && onResize && (
+        <div className="section-resize-handle" onMouseDown={handleResizeStart} onClick={(e) => e.stopPropagation()}>
+          <span>↕</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -165,6 +194,7 @@ export default function RoutePlanner() {
   const [showAllPois, setShowAllPois] = useState(true) // Show all categories
   const [poiSortBy, setPoiSortBy] = useState('distance') // 'distance', 'name', 'category'
   const [poiGroupedByCategory, setPoiGroupedByCategory] = useState({}) // Grouped POIs
+  const [savedRoutesHeight, setSavedRoutesHeight] = useState(null) // Height for saved routes section
 
   const handleResizeStart = (e) => { e.preventDefault(); setIsResizing(true) }
 
@@ -520,7 +550,8 @@ export default function RoutePlanner() {
           {distance && <div className="distance-result"><strong>Distanza Totale: {distance} km</strong>{loadingElevation && <div className="elevation-loading">📊 Calcolo dislivelli...</div>}{elevationData && !loadingElevation && <div className="elevation-stats"><div className="elevation-item ascent">⬆️ Salita: <strong>{elevationData.ascent} m</strong></div><div className="elevation-item descent">⬇️ Discesa: <strong>{elevationData.descent} m</strong></div><div className="elevation-range">📍 Altitudine: {elevationData.minElevation}m - {elevationData.maxElevation}m</div><button className="show-profile-btn" onClick={() => setShowRouteProfile(!showRouteProfile)}>{showRouteProfile ? '📍 Nascondi' : '📊 Mostra profilo'}</button><button className="save-route-btn" onClick={handleSaveRoute}>💾 Salva</button></div>}</div>}
         </CollapsibleSection>
 
-        {savedRoutes.length > 0 && <CollapsibleSection id="savedRoutes" title={`📁 Itinerari Salvati (${savedRoutes.length})`} defaultOpen={false}>
+        {savedRoutes.length > 0 && <CollapsibleSection id="savedRoutes" title={`📁 Itinerari Salvati (${savedRoutes.length})`} defaultOpen={true} resizable onResize={setSavedRoutesHeight}>
+          <div className="saved-routes-content" style={{ height: savedRoutesHeight || 'auto', maxHeight: 'none', overflowY: 'auto' }}>
           <div className="saved-routes-header"><div className="sort-buttons"><button className={`sort-btn ${sortBy === 'name' ? 'active' : ''}`} onClick={() => toggleSort('name')}>📝 A-Z {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}</button><button className={`sort-btn ${sortBy === 'date' ? 'active' : ''}`} onClick={() => toggleSort('date')}>📅 Data {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}</button></div></div>
           <div className="routes-list">
             {getSortedRoutes().map(route => { const isLoaded = loadedRouteIds.includes(route.id); return (<div key={route.id} className={`route-item ${isLoaded ? 'loaded' : ''}`}><div className="route-info"><strong>{isLoaded ? '✅ ' : ''}{route.name}</strong><small>{route.distance ? `${route.distance} km` : ''}{route.elevation ? ' 📊' : ''} • {new Date(route.createdAt || route.created_at).toLocaleDateString()}</small></div><div className="route-actions"><button className={`small-btn ${isLoaded ? 'loaded-btn' : ''}`} onClick={() => toggleLoadRoute(route)}>{isLoaded ? '✓ Sovrapposto' : '+ Aggiungi'}</button><button className="small-btn edit-btn" onClick={() => handleLoadRoute(route)}>✏️ Modifica</button><button className="small-btn" onClick={() => handleExportRoute(route)}>📥</button><button className="small-btn danger" onClick={() => handleDeleteRoute(route)}>🗑️</button></div></div>) })}
@@ -528,6 +559,7 @@ export default function RoutePlanner() {
           {loadedRoutes.length > 0 && <div><div className="clear-loaded-routes-bar"><span>{loadedRoutes.length} itinerari sovrapposti</span><button className="clear-loaded-btn" onClick={clearLoadedRoutes}>✕ Rimuovi tutti</button></div><button className="toggle-loaded-profile-btn" onClick={() => setShowLoadedProfile(!showLoadedProfile)}>{showLoadedProfile ? '📍 Nascondi profili' : '📊 Mostra profili'}</button>
             {showLoadedProfile && loadedRoutes.length > 0 && <div className="loaded-profiles-container"><div className="profile-tabs">{loadedRoutes.map((route) => (<button key={route.id} className={`profile-tab ${activeProfileTab === `route_${route.id}` ? 'active' : ''}`} onClick={() => setActiveProfileTab(`route_${route.id}`)}><span className="tab-color-indicator" style={{ backgroundColor: route.color }} /><span className="tab-name" title={route.name}>{route.name}</span></button>))}</div>{activeProfileTab && <LoadRouteProfile route={loadedRoutes.find(r => `route_${r.id}` === activeProfileTab)} selectedIndex={loadedTrackHoverIndex} onHover={(index, routeId) => { setLoadedTrackHoverIndex(index); setHoveredLoadedRouteId(routeId) }} onHoverEnd={() => { setLoadedTrackHoverIndex(null); setHoveredLoadedRouteId(null) }} />}</div>}
           </div>}
+          </div>
         </CollapsibleSection>}
 
         <CollapsibleSection id="poi" title="🔍 Luoghi lungo il percorso" defaultOpen={true}>
