@@ -274,6 +274,104 @@
   padding-top: 0.25rem;
 }
 
+/* Routing Service Selector */
+.routing-service-selector {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e1e8ed;
+}
+
+.routing-service-selector label {
+  display: block;
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.service-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.service-btn {
+  flex: 1;
+  background: #f8f9fa;
+  color: #666;
+  border: 2px solid #e1e8ed;
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.service-btn:hover {
+  background: #eef2f7;
+  border-color: #bdc3c7;
+}
+
+.service-btn.active {
+  background: #3498db;
+  color: white;
+  border-color: #3498db;
+  box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+}
+
+/* API Key Input */
+.api-key-input {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #fff8f0;
+  border-radius: 6px;
+  border: 1px solid #f0c060;
+}
+
+.api-key-input label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.api-key-link {
+  font-size: 0.75rem;
+  color: #3498db;
+  text-decoration: none;
+  font-weight: normal;
+  margin-top: 0.25rem;
+}
+
+.api-key-link:hover {
+  text-decoration: underline;
+}
+
+.api-key-input input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  background: white;
+}
+
+.api-key-input input:focus {
+  outline: none;
+  border-color: #f0c060;
+  box-shadow: 0 0 0 2px rgba(240, 192, 96, 0.2);
+}
+
+.api-key-warning {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #e67e22;
+}
+
 .show-profile-btn {
   background: #9b59b6;
   color: white;
