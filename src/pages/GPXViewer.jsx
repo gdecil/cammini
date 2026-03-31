@@ -525,12 +525,24 @@ export default function GPXViewer() {
           onHover={(index) => setSelectedIndex(index)}
         />
         
-        {/* Profile overlay on map when detached */}
+        {/* Profile overlay on map when detached - multiple tracks */}
         {activeGPXContent && isProfileDetached && (
           <div className="profile-overlay">
             <ElevationProfile 
               gpxContent={activeGPXContent} 
               trackName={activeTrack?.name}
+              isOverlay={true}
+              selectedIndex={selectedIndex}
+              onHover={(index) => setSelectedIndex(index)}
+            />
+          </div>
+        )}
+        
+        {/* Profile overlay on map when detached - single file */}
+        {gpxContent && tracks.length === 0 && isProfileDetached && (
+          <div className="profile-overlay">
+            <ElevationProfile 
+              gpxContent={gpxContent}
               isOverlay={true}
               selectedIndex={selectedIndex}
               onHover={(index) => setSelectedIndex(index)}
@@ -603,7 +615,7 @@ export default function GPXViewer() {
           )}
 
           {/* Show profile controls when tracks are loaded */}
-          {tracks.length > 0 && (
+          {(tracks.length > 0 || (gpxContent && tracks.length === 0)) && (
             <button 
               className="detach-profile-btn"
               onClick={toggleProfileDetach}
@@ -626,13 +638,6 @@ export default function GPXViewer() {
           {/* Original profile for single file loading */}
           {gpxContent && tracks.length === 0 && (
             <>
-              <button 
-                className="detach-profile-btn"
-                onClick={toggleProfileDetach}
-                title={isProfileDetached ? "Riporta profilo nella sidebar" : "Sposta profilo sulla mappa"}
-              >
-                {isProfileDetached ? "📍 Riporta nella sidebar" : "🗺️ Sposta sulla mappa"}
-              </button>
               {!isProfileDetached && (
                 <ElevationProfile 
                   gpxContent={gpxContent}
