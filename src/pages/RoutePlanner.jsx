@@ -196,6 +196,13 @@ export default function RoutePlanner() {
   const [poiGroupedByCategory, setPoiGroupedByCategory] = useState({}) // Grouped POIs
   const [savedRoutesHeight, setSavedRoutesHeight] = useState(null) // Height for saved routes section
   const [routeFilterActive, setRouteFilterActive] = useState(!!routeIdParam)
+  
+  // Geocoding state
+  const [geocodeQuery, setGeocodeQuery] = useState('')
+  const [geocodeResults, setGeocodeResults] = useState([])
+  const [geocodeLoading, setGeocodeLoading] = useState(false)
+  const [geocodeShowResults, setGeocodeShowResults] = useState(false)
+  const [activeWaypointId, setActiveWaypointId] = useState(null)
 
   const handleResizeStart = (e) => { e.preventDefault(); setIsResizing(true) }
 
@@ -550,6 +557,84 @@ export default function RoutePlanner() {
     setIsSearchingPois(false)
   }
 
+  // Geocoding function using Nominatim API
+  const searchGeocode = async (query) => {
+    if (!query || query.length < 2) {
+      setGeocodeResults([])
+      return
+    }
+    setGeocodeLoading(true)
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&accept-language=it`,
+        {
+          headers: {
+            'User-Agent': 'GPXViewer/1.0 (gpx-viewer-webapp)'
+          }
+        }
+      )
+      const data = await response.json()
+      // Nominatim returns array directly, not { features: [...] }
+      if (Array.isArray(data) && data.length > 0) {
+        const results = data.map(item => ({
+          name: item.name || item.display_name?.split(',')[0] || item.display_name,
+          displayName: item.display_name,
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+          type: item.type,
+          city: item.address?.city || item.address?.county || '',
+          country: item.address?.country || ''
+        }))
+        setGeocodeResults(results)
+      } else {
+        setGeocodeResults([])
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error)
+      setGeocodeResults([])
+    }
+    setGeocodeLoading(false)
+  }
+
+  // Handle geocode selection
+  const selectGeocodeResult = (result) => {
+    console.log('selectGeocodeResult called:', { result, activeWaypointId, waypoints })
+    if (activeWaypointId) {
+      const latStr = result.lat.toFixed(6)
+      const lngStr = result.lng.toFixed(6)
+      const newName = result.name
+      console.log('Updating waypoint:', { activeWaypointId, lat: latStr, lng: lngStr, name: newName })
+      
+      // First update lat and lng
+      setWaypoints(prev => {
+        const updated = prev.map(wp => {
+          if (wp.id === activeWaypointId) {
+            console.log('Found waypoint to update:', wp)
+            return { ...wp, lat: latStr, lng: lngStr, name: newName }
+          }
+          return wp
+        })
+        console.log('New waypoints state:', updated)
+        return updated
+      })
+    } else {
+      console.warn('No activeWaypointId set!')
+    }
+    setGeocodeShowResults(false)
+    setGeocodeQuery('')
+    setGeocodeResults([])
+    setActiveWaypointId(null)
+    showMessage(`📍 ${result.name} selezionato`, 'success')
+  }
+
+  // Open geocode search for a waypoint
+  const openGeocodeSearch = (waypointId) => {
+    setActiveWaypointId(waypointId)
+    setGeocodeShowResults(true)
+    setGeocodeQuery('')
+    setGeocodeResults([])
+  }
+
   // Group POIs by category and sort
   useEffect(() => {
     if (pois.length === 0) { setPoiGroupedByCategory({}); return }
@@ -630,8 +715,46 @@ export default function RoutePlanner() {
             {routingService === 'graphhopper' && <div className="api-key-input"><label>🔑 API Key: <a href="https://graphhopper.com/#start-api-and-routing" target="_blank" rel="noopener noreferrer" className="api-key-link">Ottieni gratis →</a></label><input id="gh-api-key" type="text" value={graphhopperApiKey} onChange={(e) => setGraphhopperApiKey(e.target.value)} placeholder="Incolla API key..." />{!graphhopperApiKey && <p className="api-key-warning">⚠️ Senza API key userà linee rette</p>}</div>}
           </div>
           <div className="waypoints-list">
-            {waypoints.map((wp, index) => (<div key={wp.id} className={`waypoint-item ${draggedIndex === index ? 'dragging' : ''}`} style={{ borderLeftColor: WAYPOINT_COLORS[index % WAYPOINT_COLORS.length] }} draggable onDragStart={(e) => handleDragStart(e, index)} onDragOver={handleDragOver} onDragEnter={handleDragEnter} onDragEnd={handleDragEnd} onDrop={(e) => handleDrop(e, index)}><div className="waypoint-header"><span className="waypoint-drag-handle">⋮⋮</span><span className="waypoint-number" style={{ backgroundColor: WAYPOINT_COLORS[index % WAYPOINT_COLORS.length] }}>{index + 1}</span><input type="text" className="waypoint-name" value={wp.name} onChange={(e) => updateWaypoint(wp.id, 'name', e.target.value)} placeholder="Nome tappa" /><button className="waypoint-remove" onClick={() => removeWaypoint(wp.id)}>✕</button></div><div className="waypoint-coords"><input type="text" placeholder="Lat" value={wp.lat} onChange={(e) => updateWaypoint(wp.id, 'lat', e.target.value)} /><input type="text" placeholder="Lng" value={wp.lng} onChange={(e) => updateWaypoint(wp.id, 'lng', e.target.value)} /></div>{index > 0 && segments[index - 1] && <div className="segment-distance">← {segments[index - 1]} km</div>}</div>))}
+            {waypoints.map((wp, index) => (<div key={wp.id} className={`waypoint-item ${draggedIndex === index ? 'dragging' : ''}`} style={{ borderLeftColor: WAYPOINT_COLORS[index % WAYPOINT_COLORS.length] }} draggable onDragStart={(e) => handleDragStart(e, index)} onDragOver={handleDragOver} onDragEnter={handleDragEnter} onDragEnd={handleDragEnd} onDrop={(e) => handleDrop(e, index)}><div className="waypoint-header"><span className="waypoint-drag-handle">⋮⋮</span><span className="waypoint-number" style={{ backgroundColor: WAYPOINT_COLORS[index % WAYPOINT_COLORS.length] }}>{index + 1}</span><input type="text" className="waypoint-name" value={wp.name} onChange={(e) => updateWaypoint(wp.id, 'name', e.target.value)} placeholder="Nome tappa" /><button className="waypoint-remove" onClick={() => removeWaypoint(wp.id)}>✕</button></div><div className="waypoint-coords"><input type="text" placeholder="Lat" value={wp.lat} onChange={(e) => updateWaypoint(wp.id, 'lat', e.target.value)} /><input type="text" placeholder="Lng" value={wp.lng} onChange={(e) => updateWaypoint(wp.id, 'lng', e.target.value)} /><button className="geocode-btn" onClick={() => openGeocodeSearch(wp.id)} title="Cerca luogo">🔍</button></div>{index > 0 && segments[index - 1] && <div className="segment-distance">← {segments[index - 1]} km</div>}</div>))}
           </div>
+          
+          {/* Geocoding Search Popup */}
+          {geocodeShowResults && (
+            <div className="geocode-popup">
+              <div className="geocode-header">
+                <input 
+                  type="text" 
+                  placeholder="Cerca luogo (es. Roma, Milano, Firenze)..." 
+                  value={geocodeQuery}
+                  onChange={(e) => {
+                    setGeocodeQuery(e.target.value)
+                    searchGeocode(e.target.value)
+                  }}
+                  autoFocus
+                />
+                <button className="close-geocode" onClick={() => { setGeocodeShowResults(false); setActiveWaypointId(null) }}>✕</button>
+              </div>
+              <div className="geocode-results">
+                {geocodeLoading && <div className="geocode-loading">🔄 Ricerca...</div>}
+                {!geocodeLoading && geocodeResults.length === 0 && geocodeQuery.length >= 2 && (
+                  <div className="geocode-empty">Nessun risultato per "{geocodeQuery}"</div>
+                )}
+                {!geocodeLoading && geocodeResults.map((result, i) => (
+                  <div 
+                    key={i} 
+                    className="geocode-result-item"
+                    onClick={() => selectGeocodeResult(result)}
+                  >
+                    <div className="geocode-result-name">{result.name}</div>
+                    <div className="geocode-result-detail">
+                      {result.city && <span>{result.city}</span>}
+                      {result.country && <span>{result.country}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <button className="add-waypoint-btn" onClick={addWaypoint}>➕ Aggiungi Tappa</button>
           <div className="route-actions">
             <button className="calc-btn" onClick={calculateMultiRoute} disabled={isCalculating}>{isCalculating ? '⏳ Calcolo...' : `🚶 Calcola (${ROUTING_SERVICES[routingService]?.name || routingService})`}</button>

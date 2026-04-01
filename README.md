@@ -2,7 +2,7 @@
 
 **App per visualizzare tracce GPX e pianificare itinerari escursionistici**
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 ![React](https://img.shields.io/badge/React-18.2.0-61dafb)
 ![Leaflet](https://img.shields.io/badge/Leaflet-1.9.4-199432)
 
@@ -15,23 +15,30 @@
 - Sidebar con lista di tutti i cammini salvati
 
 ### 📍 Carica GPX
-- **Caricamento multiplo**: Carica più file GPX contemporaneamente 🆕
-- Visualizza tracce sovrapposte su mappa interattiva con colori diversi 🆕
+- **Caricamento multiplo**: Carica più file GPX contemporaneamente
+- Visualizza tracce sovrapposte su mappa interattiva con colori diversi
 - Profilo altimetrico con sincronizzazione mappa ↔ grafico
 - Salva e gestisci le tue tracce
-- Lista tracce con checkbox per mostrare/nascondere ciascuna traccia 🆕
+- Lista tracce con checkbox per mostrare/nascondere ciascuna traccia
+- **Filtro da URL**: Passa `?trackId=X` per mostrare una traccia specifica
+- Esporta come GPX e KML (per Google My Maps)
 
 ### 🗺️ Calcola Percorso
 - Pianifica itinerari multi-tappa
 - Trascina i punti sulla mappa
 - Calcola distanza e dislivelli
-- **3 servizi di routing disponibili:** 🆕
+- **🔍 Ricerca luoghi (Geocoding)** - Nuovo!
+  - Pulsante 🔍 accanto ad ogni waypoint
+  - Cerca indirizzi, città, luoghi con Nominatim (OpenStreetMap)
+  - Inserimento automatico coordinate e nome
+- **3 servizi di routing disponibili:**
   - **OSRM** - Open Source Routing Machine (gratuito, nessuna API key)
   - **Valhalla** - Open source routing engine (gratuito via server demo)
   - **GraphHopper** - Fast open-source routing (richiede API key gratuita)
 - Esporta percorsi come GPX
+- **Filtro da URL**: Passa `?routeId=X` per mostrare un percorso specifico
 
-### 📚 Itinerari Salvati - Sovrapposizione 🆕
+### 📚 Itinerari Salvati - Sovrapposizione
 - **Aggiungi più itinerari contemporaneamente sulla mappa**
 - Ogni itinerario ha un colore distinto per facile identificazione
 - **Profili altimetrici sincronizzati** per ogni itinerario sovrapposto
@@ -39,17 +46,27 @@
 - Tabs per selezionare quale profilo visualizzare
 - Pulsante "Modifica" per caricare un itinerario completo con waypoint ed elevazione
 
-### 📥 Esporta GPX
+### 📷 Associazione Foto alle Tracce
+- Associa una cartella locale di foto a una traccia salvata
+- Percorso salvato nel database (associato una sola volta)
+- Se la cartella non viene trovata, chiede di riassociarla
+- Galleria foto scorrevole con anteprime
+- **Scansione GPS**: estrae coordinate GPS dai metadata EXIF delle foto
+- Foto con GPS visualizzate come marker sulla mappa
+- Click su un marker foto → popup con anteprima della foto
+
+### 🗺️ Ricerca POI (Luoghi lungo il percorso)
+- Trova Hotel, Guest House, Ostelli, Campeggi, Ristoranti, Cafè e Rifugi
+- Risultati raggruppati per categoria
+- Ordinamento per distanza, nome o categoria
+- Click su un luogo per vedere il segnaposto sulla mappa
+- Segnaposto personalizzato con icona e nome del luogo
+
+### 📥 Esporta
 - Esporta tracce caricate come file GPX
 - Esporta itinerari sovrapposti come file GPX
 - Esporta itinerari calcolati come GPX (con waypoint separati)
-- Disponibile dalla Home, da Carica GPX e da Calcola Percorso
-
-### 🗺️ Strati Mappa
-- OpenStreetMap
-- OpenTopoMap
-- Stamen Terrain
-- CartoDB Positron/Dark
+- **Esporta KML**: per importazione in Google My Maps
 
 ### 🖥️ Modalità Fullscreen
 - Premi ⛶ per massima immersività
@@ -77,7 +94,9 @@ L'app sarà disponibile su:
 
 - `/` - Home (mappa con tutti i tracciati salvati)
 - `/gpx` - Carica GPX (visualizza e gestisci tracce)
+- `/gpx?trackId=123` - Carica GPX con filtro traccia specifica
 - `/route` - Calcola Percorso (pianifica itinerari)
+- `/route?routeId=123` - Calcola Percorso con filtro percorso specifico
 
 ## 🏗️ Struttura
 
@@ -88,7 +107,8 @@ src/
 │   ├── ElevationProfile.jsx # Grafico altimetrico D3
 │   ├── FileUpload.jsx       # Upload singolo/multiplo file GPX
 │   ├── LayerSelector.jsx    # Selettore tipo mappa
-│   └── SavedTracks.jsx      # Gestione tracce salvate
+│   ├── SavedTracks.jsx     # Gestione tracce salvate
+│   └── PhotoGallery.jsx     # Galleria foto con EXIF GPS
 ├── pages/
 │   ├── HomeMap.jsx          # Pagina home con mappa e segnaposti
 │   ├── GPXViewer.jsx        # Pagina visualizzazione GPX multipla
@@ -100,53 +120,37 @@ src/
 ## 🛠️ Tecnologie
 
 - **React 18** - UI framework
-- **React Router** - Navigazione
+- **React Router** - Navigazione con parametri URL
 - **Leaflet** - Mappe OpenStreetMap
 - **React-Leaflet** - Wrapper React per Leaflet
 - **D3.js** - Grafico altimetrico
+- **Nominatim API** - Geocoding (ricerca luoghi)
 - **OSRM API** - Routing
 - **Valhalla API** - Routing alternativo
 - **GraphHopper API** - Routing ad alte prestazioni
 - **OpenTopoData API** - Elevazione
+- **Overpass API** - Punti di interesse (POI)
 - **SQL.js** - Database locale (tracce salvate)
 - **Electron** - App desktop
 
-## 🆕 Ultime Novità
+## 🆕 Ultime Novità (v1.1.0)
 
-### Caricamento Multiplo GPX
-- Seleziona più file GPX contemporaneamente
-- Ogni traccia appare con un colore diverso sulla mappa
-- Checkbox per mostrare/nascondere singole tracce
-- Lista tracce con anteprima dei file selezionati
+### 🔍 Geocoding - Ricerca Luoghi
+- Pulsante 🔍 accanto ad ogni waypoint in "Calcola Percorso"
+- Popup di ricerca con Nominatim (OpenStreetMap)
+- Risultati in italiano con città e paese
+- Click su risultato → coordinate e nome inseriti automaticamente
 
-### Tre Motori di Routing
-- **OSRM**: Gratuito, nessuna configurazione necessaria
-- **Valhalla**: Gratuito, server demo integrato
-- **GraphHopper**: API key gratuita disponibile su graphhopper.com
+### 🔗 Filtro da URL
+- Da Home, clicca su una traccia/percorso → si apre la pagina con filtro
+- `?trackId=123` in Carica GPX mostra solo quella traccia
+- `?routeId=123` in Calcola Percorso mostra solo quel percorso
+- Badge "Filtro attivo" con pulsante per rimuovere il filtro
 
-### Sovrapposizione Itinerari
-- Aggiungi più itinerari salvati sulla stessa mappa
-- Profilo altimetrico per ogni itinerario
-- Hover sincronizzato tra profilo e mappa per ogni traccia
-- Tabs colorati per navigare tra i profili
-
-### Ricerca Luoghi lungo il Percorso (POI)
-- Trova Hotel, Guest House, Ostelli, Campeggi, Ristoranti, Cafè e Rifugi
-- Risultati raggruppati per categoria
-- Ordinamento per distanza, nome o categoria
-- Checkbox "Visualizza tutti" per espandere/collassare categorie
-- Click su un luogo per vedere il segnaposto sulla mappa
-- Segnaposto personalizzato con icona e nome del luogo
-
-### 📷 Associazione Foto alle Tracce
-- Associa una cartella locale di foto a una traccia salvata
-- Percorso salvato nel database (associato una sola volta)
-- Se la cartella non viene trovata, chiede di riassociarla
-- Galleria foto scorrevole con anteprime
-- **Scansione GPS**: estrae coordinate GPS dai metadata EXIF delle foto
-- Foto con GPS visualizzate come marker sulla mappa
-- Click su un marker foto → popup con anteprima della foto
-- Esporta tracce GPX (per importazione in Google My Maps con conversione KML)
+### 📷 Galleria Foto Migliorata
+- Scansione automatica coordinate GPS da EXIF
+- Marker sulla mappa per ogni foto geolocalizzata
+- Popup con anteprima al click del marker
 
 ## 📱 Responsive
 
