@@ -675,6 +675,7 @@ export default function GPXViewer() {
   // Photo markers for map
   const [photoMarkers, setPhotoMarkers] = useState([])
   const [photoGalleryKey, setPhotoGalleryKey] = useState(0)
+  const [showFullscreenGallery, setShowFullscreenGallery] = useState(false)
 
   // Callback to receive photo markers from PhotoGallery
   useEffect(() => {
@@ -870,7 +871,18 @@ export default function GPXViewer() {
           
           {/* Photo Gallery - only show for loaded saved tracks */}
           {activeTrackId && (
-            <PhotoGallery key={photoGalleryKey} itemId={activeTrackId} itemType="track" coordinates={activeTrack?.coordinates} />
+            <PhotoGallery 
+              key={photoGalleryKey} 
+              itemId={activeTrackId} 
+              itemType="track" 
+              coordinates={activeTrack?.coordinates}
+              onFullscreenToggle={(isFullscreen) => {
+                setShowFullscreenGallery(isFullscreen)
+                if (isFullscreen) {
+                  setIsFullscreen(true)
+                }
+              }}
+            />
           )}
           
           <SavedTracks
@@ -887,6 +899,20 @@ export default function GPXViewer() {
             onRename={handleRenameTrack}
             onSaveCurrent={handleSaveCurrent}
             hasTrack={trackCoordinates.length > 0 || tracks.length > 0}
+          />
+        </div>
+      )}
+
+      {/* Fullscreen Photo Gallery Overlay */}
+      {showFullscreenGallery && activeTrackId && isFullscreen && (
+        <div className="fullscreen-gallery-overlay">
+          <PhotoGallery 
+            key={`fullscreen-${photoGalleryKey}`}
+            itemId={activeTrackId} 
+            itemType="track" 
+            coordinates={activeTrack?.coordinates}
+            fullscreenMode={true}
+            onFullscreenToggle={(isFullscreen) => setShowFullscreenGallery(isFullscreen)}
           />
         </div>
       )}

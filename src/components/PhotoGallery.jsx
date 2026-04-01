@@ -4,7 +4,7 @@ import './PhotoGallery.css'
 
 const API_URL = '/api'
 
-export default function PhotoGallery({ itemId, itemType, coordinates: trackCoordinates }) {
+export default function PhotoGallery({ itemId, itemType, coordinates: trackCoordinates, fullscreenMode = false, onFullscreenToggle }) {
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(false)
   const [folderPath, setFolderPath] = useState('')
@@ -16,7 +16,9 @@ export default function PhotoGallery({ itemId, itemType, coordinates: trackCoord
   const [showGPSCheckbox, setShowGPSCheckbox] = useState(false)
   const [showFolderInput, setShowFolderInput] = useState(false)
   const [selectedMarkerIndex, setSelectedMarkerIndex] = useState(null)
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const fileInputRef = useRef(null)
+  const scrollContainerRef = useRef(null)
 
   // Load saved folder path from item
   useEffect(() => {
@@ -104,20 +106,30 @@ export default function PhotoGallery({ itemId, itemType, coordinates: trackCoord
       const img = new Image()
       img.crossOrigin = 'Anonymous'
       img.onload = () => {
-        EXIF.getData(img, function() {
-          const lat = EXIF.getTag(this, 'GPSLatitude')
-          const lon = EXIF.getTag(this, 'GPSLongitude')
-          const latRef = EXIF.getTag(this, 'GPSLatitudeRef') || 'N'
-          const lonRef = EXIF.getTag(this, 'GPSLongitudeRef') || 'E'
-          
-          if (lat && lon) {
-            const latDecimal = convertDMSToDD(lat[0], lat[1], lat[2], latRef)
-            const lonDecimal = convertDMSToDD(lon[0], lon[1], lon[2], lonRef)
-            resolve([latDecimal, lonDecimal])
-          } else {
-            resolve(null)
-          }
-        })
+        try {
+          EXIF.getData(img, function() {
+            try {
+              const lat = EXIF.getTag(this, 'GPSLatitude')
+              const lon = EXIF.getTag(this, 'GPSLongitude')
+              const latRef = EXIF.getTag(this, 'GPSLatitudeRef') || 'N'
+              const lonRef = EXIF.getTag(this, 'GPSLongitudeRef') || 'E'
+              
+              if (lat && lon && Array.isArray(lat) && lat.length === 3) {
+                const latDecimal = convertDMSToDD(lat[0], lat[1], lat[2], latRef)
+                const lonDecimal = convertDMSToDD(lon[0], lon[1], lon[2], lonRef)
+                resolve([latDecimal, lonDecimal])
+              } else {
+                resolve(null)
+              }
+            } catch (exifErr) {
+              console.warn('EXIF parsing error for photo:', photoUrl, exifErr)
+              resolve(null)
+            }
+          })
+        } catch (err) {
+          console.warn('EXIF getData error for photo:', photoUrl, err)
+          resolve(null)
+        }
       }
       img.onerror = () => reject(new Error('Failed to load image'))
       img.src = photoUrl
@@ -211,6 +223,103 @@ export default function PhotoGallery({ itemId, itemType, coordinates: trackCoord
   const handlePhotoClick = (photo, index) => {
     setSelectedPhoto({ photo, index })
     setSelectedMarkerIndex(index)
+    setCurrentPhotoIndex(index)
+  }
+
+  // Navigation functions for fullscreen mode
+  const goToPrevious = () => {
+    const newIndex = Math.max(0, currentPhotoIndex - 1)
+    setCurrentPhotoIndex(newIndex)
+    scrollToPhoto(newIndex)
+    if (window.onPhotoMarkersLoaded && photos[newIndex]) {
+      handlePhotoClick(photos[newIndex], newIndex)
+    }
+  }
+
+  const goToNext = () => {
+    const newIndex = Math.min(photos.length - 1, currentPhotoIndex + 1)
+    setCurrentPhotoIndex(newIndex)
+    scrollToPhoto(newIndex)
+    if (window.onPhotoMarkersLoaded && photos[newIndex]) {
+      handlePhotoClick(photos[newIndex], newIndex)
+    }
+  }
+
+  const scrollToPhoto = (index) => {
+    if (scrollContainerRef.current) {
+      const photoWidth = scrollContainerRef.current.scrollWidth / photos.length
+      scrollContainerRef.current.scrollTo({
+        left: photoWidth * index,
+        behavior: 'smooth'
+      })
+    }
+  }
+
+  // Handle touch/swipe for fullscreen mode
+  const [touchStart, setTouchStart] = useState(null)
+  const [touchEnd, setTouchEnd] = useState(null)
+
+  const handleTouchStart = (e) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    const minSwipeDistance = 50
+    if (Math.abs(distance) > minSwipeDistance) {
+      if (distance > 0) {
+        goToNext()
+      } else {
+        goToPrevious()
+      }
+    }
+  }
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        goToPrevious()
+      } else if (e.key === 'ArrowRight') {
+        goToNext()
+      } else if (e.key === 'Escape') {
+        if (selectedPhoto) {
+          setSelectedPhoto(null)
+        } else if (fullscreenMode && onFullscreenToggle) {
+          onFullscreenToggle(false)
+          document.exitFullscreen?.().catch(() => {})
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedPhoto, fullscreenMode, onFullscreenToggle])
+
+  // Navigation for modal
+  const goToPreviousModal = () => {
+    const newIndex = Math.max(0, currentPhotoIndex - 1)
+    setCurrentPhotoIndex(newIndex)
+    setSelectedPhoto({ photo: photos[newIndex], index: newIndex })
+    if (scrollContainerRef.current) {
+      const photoWidth = scrollContainerRef.current.scrollWidth / photos.length
+      scrollContainerRef.current.scrollTo({ left: photoWidth * newIndex, behavior: 'smooth' })
+    }
+  }
+
+  const goToNextModal = () => {
+    const newIndex = Math.min(photos.length - 1, currentPhotoIndex + 1)
+    setCurrentPhotoIndex(newIndex)
+    setSelectedPhoto({ photo: photos[newIndex], index: newIndex })
+    if (scrollContainerRef.current) {
+      const photoWidth = scrollContainerRef.current.scrollWidth / photos.length
+      scrollContainerRef.current.scrollTo({ left: photoWidth * newIndex, behavior: 'smooth' })
+    }
   }
 
   const handleRemoveFolder = async () => {
@@ -290,7 +399,13 @@ export default function PhotoGallery({ itemId, itemType, coordinates: trackCoord
 
       {/* Photo Gallery */}
       {photos.length > 0 && !showFolderInput && (
-        <div className="gallery-grid">
+        <div 
+          className={`gallery-grid ${fullscreenMode ? 'fullscreen-gallery-grid' : ''}`}
+          ref={scrollContainerRef}
+          onTouchStart={fullscreenMode ? handleTouchStart : undefined}
+          onTouchMove={fullscreenMode ? handleTouchMove : undefined}
+          onTouchEnd={fullscreenMode ? handleTouchEnd : undefined}
+        >
           {photos.map((photo, index) => (
             <div 
               key={index} 
@@ -306,21 +421,98 @@ export default function PhotoGallery({ itemId, itemType, coordinates: trackCoord
         </div>
       )}
 
+      {/* Navigation Controls for Fullscreen Mode */}
+      {fullscreenMode && photos.length > 1 && (
+        <div className="gallery-nav-controls fullscreen-nav">
+          <button 
+            className="nav-arrow nav-prev"
+            onClick={goToPrevious}
+            disabled={currentPhotoIndex === 0}
+            title="Precedente"
+          >
+            ◀
+          </button>
+          <span className="photo-counter">{currentPhotoIndex + 1} / {photos.length}</span>
+          <button 
+            className="nav-arrow nav-next"
+            onClick={goToNext}
+            disabled={currentPhotoIndex === photos.length - 1}
+            title="Successiva"
+          >
+            ▶
+          </button>
+        </div>
+      )}
+
+      {/* Toggle fullscreen button in normal mode */}
+      {!fullscreenMode && photos.length > 0 && (
+        <button 
+          className="btn-fullscreen-gallery"
+          onClick={() => {
+            // Request browser fullscreen first
+            document.documentElement.requestFullscreen?.().catch(() => {})
+            onFullscreenToggle && onFullscreenToggle(true)
+          }}
+          title="Visualizza a schermo intero"
+        >
+          ⛶ Visualizza a schermo intero
+        </button>
+      )}
+
       {/* Selected Photo Modal */}
       {selectedPhoto && (
         <div className="photo-modal" onClick={() => setSelectedPhoto(null)}>
           <div className="photo-modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="close-modal" onClick={() => setSelectedPhoto(null)}>✕</button>
+            
+            {/* Navigation arrows for modal */}
+            {photos.length > 1 && (
+              <button 
+                className="modal-nav-arrow modal-prev"
+                onClick={goToPreviousModal}
+                disabled={currentPhotoIndex === 0}
+                title="Precedente (← freccia)"
+              >
+                ◀
+              </button>
+            )}
+            
             <img src={selectedPhoto.photo.url} alt={selectedPhoto.photo.name} />
+            
+            {photos.length > 1 && (
+              <button 
+                className="modal-nav-arrow modal-next"
+                onClick={goToNextModal}
+                disabled={currentPhotoIndex === photos.length - 1}
+                title="Successiva (→ freccia)"
+              >
+                ▶
+              </button>
+            )}
+            
             <div className="photo-modal-info">
               <strong>{selectedPhoto.photo.name}</strong>
-              <span>{(selectedPhoto.photo.size / 1024).toFixed(0)} KB</span>
+              <span>{selectedPhoto.index + 1} / {photos.length} - {(selectedPhoto.photo.size / 1024).toFixed(0)} KB</span>
             </div>
             {photoMarkers.find(m => m.index === selectedPhoto.index) && (
               <span className="gps-marker-info">📍 GPS: {photoMarkers.find(m => m.index === selectedPhoto.index).position.join(', ')}</span>
             )}
           </div>
         </div>
+      )}
+
+      {/* Close fullscreen button */}
+      {fullscreenMode && (
+        <button 
+          className="btn-exit-fullscreen"
+          onClick={() => {
+            onFullscreenToggle && onFullscreenToggle(false)
+            document.exitFullscreen?.().catch(() => {})
+          }}
+          title="Esci dalla modalità fullscreen (ESC)"
+        >
+          ✕ Esci fullscreen
+        </button>
       )}
     </div>
   )

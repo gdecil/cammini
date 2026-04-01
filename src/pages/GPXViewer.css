@@ -373,3 +373,68 @@
     font-size: 22px;
   }
 }
+
+/* Fullscreen Photo Gallery Overlay */
+.fullscreen-gallery-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1500;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  backdrop-filter: blur(5px);
+}
+
+.fullscreen-gallery-overlay .photo-gallery {
+  width: 100%;
+  max-width: 90vw;
+  height: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fullscreen-gallery-overlay .folder-header {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-radius: 8px;
+}
+
+.fullscreen-gallery-overlay .folder-header span {
+  color: white;
+}
+
+.fullscreen-gallery-overlay .btn-remove-folder {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.fullscreen-gallery-overlay .btn-remove-folder:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen-gallery-overlay .gps-checkbox-wrapper {
+  padding: 0.5rem;
+}
+
+.fullscreen-gallery-overlay .btn-scan-gps {
+  background: rgba(52, 152, 219, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen-gallery-overlay .gallery-loading {
+  color: white;
+}
+
+.fullscreen-gallery-overlay .gallery-error {
+  color: #ff6b6b;
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
