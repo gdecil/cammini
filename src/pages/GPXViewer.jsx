@@ -467,6 +467,146 @@ export default function GPXViewer() {
     showMessage(`Traccia "${track.name}" esportata`, 'success')
   }
 
+  // Convert GPX to KML format
+  const gpxToKml = (gpxContent, name) => {
+    const parser = new DOMParser()
+    const xmlDoc = parser.parseFromString(gpxContent, 'text/xml')
+    
+    let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>${name || 'GPX Track'}</name>
+    <Style id="trackStyle">
+      <LineStyle>
+        <color>ff0000ff</color>
+        <width>4</width>
+      </LineStyle>
+    </Style>
+`
+    
+    // Parse tracks
+    const tracks = xmlDoc.getElementsByTagName('trk')
+    for (let i = 0; i < tracks.length; i++) {
+      const trackName = tracks[i].getElementsByTagName('name')[0]?.textContent || `Track ${i + 1}`
+      const trackSegments = tracks[i].getElementsByTagName('trkseg')
+      
+      for (let j = 0; j < trackSegments.length; j++) {
+        const trackPoints = trackSegments[j].getElementsByTagName('trkpt')
+        if (trackPoints.length > 0) {
+          kml += `    <Placemark>
+      <name>${trackName}${trackSegments.length > 1 ? ` (Segment ${j + 1})` : ''}</name>
+      <styleUrl>#trackStyle</styleUrl>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+`
+          for (let k = 0; k < trackPoints.length; k++) {
+            const lat = parseFloat(trackPoints[k].getAttribute('lat'))
+            const lon = parseFloat(trackPoints[k].getAttribute('lon'))
+            const ele = trackPoints[k].getElementsByTagName('ele')[0]?.textContent || '0'
+            kml += `          ${lon},${lat},${ele}
+`
+          }
+          kml += `        </coordinates>
+      </LineString>
+    </Placemark>
+`
+        }
+      }
+    }
+    
+    // Parse routes
+    const routes = xmlDoc.getElementsByTagName('rte')
+    for (let i = 0; i < routes.length; i++) {
+      const routeName = routes[i].getElementsByTagName('name')[0]?.textContent || `Route ${i + 1}`
+      const routePoints = routes[i].getElementsByTagName('rtept')
+      
+      if (routePoints.length > 0) {
+        kml += `    <Placemark>
+      <name>${routeName}</name>
+      <styleUrl>#trackStyle</styleUrl>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+`
+        for (let j = 0; j < routePoints.length; j++) {
+          const lat = parseFloat(routePoints[j].getAttribute('lat'))
+          const lon = parseFloat(routePoints[j].getAttribute('lon'))
+          const ele = routePoints[j].getElementsByTagName('ele')[0]?.textContent || '0'
+          kml += `          ${lon},${lat},${ele}
+`
+        }
+        kml += `        </coordinates>
+      </LineString>
+    </Placemark>
+`
+      }
+    }
+    
+    kml += `  </Document>
+</kml>`
+    return kml
+  }
+
+  // Open Google My Maps for KML import (with automatic file download)
+  const openGoogleMyMaps = (track) => {
+    // First get the GPX content
+    let trackGPXContent = null
+    if (track?.gpxContent) {
+      trackGPXContent = track.gpxContent
+    } else if (gpxContent) {
+      trackGPXContent = gpxContent
+    }
+    
+    if (!trackGPXContent) {
+      showMessage('Nessun file GPX disponibile', 'warning')
+      return
+    }
+
+    // Convert GPX to KML
+    const trackName = track?.name || extractGPXName(trackGPXContent) || `traccia_${Date.now()}`
+    const kmlContent = gpxToKml(trackGPXContent, trackName)
+    
+    // Create download link for KML
+    const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${trackName}.kml`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    // Open Google My Maps in new tab
+    window.open('https://www.google.com/maps/d/', '_blank')
+    showMessage('File KML scaricato! Vai su Google My Maps per importarlo', 'success')
+  }
+
+  // Open track in Google Maps
+  const openInGoogleMaps = (coords) => {
+    if (!coords || coords.length < 2) {
+      showMessage('Nessuna traccia da visualizzare', 'warning')
+      return
+    }
+    // Sample coordinates to stay within URL limits (Google Maps supports ~10 waypoints)
+    const maxWaypoints = 10
+    const step = coords.length > maxWaypoints ? Math.floor(coords.length / maxWaypoints) : 1
+    const sampledCoords = []
+    for (let i = 0; i < coords.length && sampledCoords.length < maxWaypoints; i += step) {
+      sampledCoords.push(coords[i])
+    }
+    // Ensure last point is included
+    if (sampledCoords[sampledCoords.length - 1] !== coords[coords.length - 1]) {
+      sampledCoords.push(coords[coords.length - 1])
+    }
+    // Build waypoints string
+    const waypointsStr = sampledCoords.map(c => `${c[0]},${c[1]}`).join('|')
+    const url = `https://www.google.com/maps/dir/?api=1&waypoints=${encodeURIComponent(waypointsStr)}`
+    window.open(url, '_blank')
+    showMessage('Apertura Google Maps...', 'success')
+  }
+
   // Calculate distance for a track
   const calculateDistance = (coords) => {
     if (!coords || coords.length < 2) return 0
@@ -603,6 +743,11 @@ export default function GPXViewer() {
                         title="Esporta GPX"
                       >📥</button>
                       <button 
+                        className="track-action-btn google-maps-btn" 
+                        onClick={(e) => { e.stopPropagation(); openInGoogleMaps(track.coordinates) }}
+                        title="Apri in Google Maps"
+                      >📍</button>
+                      <button 
                         className="track-action-btn remove" 
                         onClick={(e) => { e.stopPropagation(); removeTrack(track.id) }}
                         title="Rimuovi"
@@ -645,6 +790,23 @@ export default function GPXViewer() {
                   onHover={(index) => setSelectedIndex(index)}
                 />
               )}
+          {/* Google Maps and My Maps buttons for single file */}
+              <div className="google-maps-buttons">
+                <button 
+                  className="google-maps-btn primary"
+                  onClick={() => openGoogleMyMaps(null)}
+                  title="Importa file GPX in Google My Maps"
+                >
+                  💾 Scarica e importa in Google My Maps
+                </button>
+                <button 
+                  className="google-maps-btn secondary"
+                  onClick={() => openInGoogleMaps(trackCoordinates)}
+                  title="Apri traccia in Google Maps"
+                >
+                  📍 Apri in Google Maps
+                </button>
+              </div>
             </>
           )}
           
