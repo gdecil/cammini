@@ -30,17 +30,23 @@ const downloadGPX = (gpx, filename) => {
   URL.revokeObjectURL(url)
 }
 
-export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, onRename, hasTrack }) {
+export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, onRename, hasTrack, filterId }) {
   const [sortBy, setSortBy] = useState('date') // 'name' or 'date'
   const [sortOrder, setSortOrder] = useState('desc') // 'asc' or 'desc'
   const [editingName, setEditingName] = useState(null)
   const [newName, setNewName] = useState('')
+  const [filterActive, setFilterActive] = useState(!!filterId)
   
   // Convert tracks object to array and sort
-  const trackArray = Object.keys(tracks).map(name => ({
+  let trackArray = Object.keys(tracks).map(name => ({
     name,
     ...tracks[name]
   }))
+  
+  // Apply filter if filterId is provided
+  if (filterActive && filterId) {
+    trackArray = trackArray.filter(track => track.id === filterId)
+  }
   
   const sortedTracks = [...trackArray].sort((a, b) => {
     let comparison = 0
@@ -93,6 +99,19 @@ export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, o
           💾 Salva Traccia
         </button>
       </div>
+
+      {/* Filter indicator */}
+      {filterActive && filterId && (
+        <div className="filter-indicator">
+          <span>🔍 Filtro attivo: 1 traccia</span>
+          <button 
+            className="small-btn" 
+            onClick={() => setFilterActive(false)}
+          >
+            ✕ Rimuovi filtro
+          </button>
+        </div>
+      )}
 
       {/* Sort options */}
       <div className="sort-options">

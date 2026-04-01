@@ -17,8 +17,13 @@ export default function PhotoGallery({ itemId, itemType, coordinates: trackCoord
   const [showFolderInput, setShowFolderInput] = useState(false)
   const [selectedMarkerIndex, setSelectedMarkerIndex] = useState(null)
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const fileInputRef = useRef(null)
   const scrollContainerRef = useRef(null)
+  const modalImgRef = useRef(null)
 
   // Load saved folder path from item
   useEffect(() => {
@@ -342,6 +347,49 @@ export default function PhotoGallery({ itemId, itemType, coordinates: trackCoord
   // Get folder name from path
   const folderName = folderPath.split(/[\\/]/).pop() || folderPath
 
+  // Reset zoom when photo changes
+  useEffect(() => {
+    if (selectedPhoto) {
+      setZoom(1)
+      setPan({ x: 0, y: 0 })
+    }
+  }, [selectedPhoto?.index])
+
+  // Zoom handlers
+  const handleWheel = (e) => {
+    if (!selectedPhoto) return
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? -0.2 : 0.2
+    setZoom(z => Math.max(0.5, Math.min(5, z + delta)))
+  }
+
+  const handleMouseDown = (e) => {
+    if (zoom > 1) {
+      setIsDragging(true)
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
+    }
+  }
+
+  const handleMouseMove = (e) => {
+    if (isDragging && zoom > 1) {
+      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
+    }
+  }
+
+  const handleMouseUp = () => setIsDragging(false)
+
+  // Track fullscreen state
+  const [isFullscreenView, setIsFullscreenView] = useState(false)
+
+  // Check and update fullscreen state
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreenView(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
   return (
     <div className="photo-gallery">
       {/* Folder path prompt */}
@@ -461,8 +509,19 @@ export default function PhotoGallery({ itemId, itemType, coordinates: trackCoord
 
       {/* Selected Photo Modal */}
       {selectedPhoto && (
-        <div className="photo-modal" onClick={() => setSelectedPhoto(null)}>
-          <div className="photo-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div 
+          className={`photo-modal ${isFullscreenView ? 'fullscreen-view' : ''}`}
+          onClick={() => setSelectedPhoto(null)}
+          onWheel={handleWheel}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          <div 
+            className="photo-modal-content" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+          >
             <button className="close-modal" onClick={() => setSelectedPhoto(null)}>✕</button>
             
             {/* Navigation arrows for modal */}
@@ -477,7 +536,20 @@ export default function PhotoGallery({ itemId, itemType, coordinates: trackCoord
               </button>
             )}
             
-            <img src={selectedPhoto.photo.url} alt={selectedPhoto.photo.name} />
+            <div 
+              className="photo-zoom-container"
+              onMouseDown={handleMouseDown}
+            >
+              <img 
+                src={selectedPhoto.photo.url} 
+                alt={selectedPhoto.photo.name}
+                style={{ 
+                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                  cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in'
+                }}
+                draggable={false}
+              />
+            </div>
             
             {photos.length > 1 && (
               <button 
@@ -493,6 +565,8 @@ export default function PhotoGallery({ itemId, itemType, coordinates: trackCoord
             <div className="photo-modal-info">
               <strong>{selectedPhoto.photo.name}</strong>
               <span>{selectedPhoto.index + 1} / {photos.length} - {(selectedPhoto.photo.size / 1024).toFixed(0)} KB</span>
+              {zoom > 1 && <span className="zoom-info">🔍 {Math.round(zoom * 100)}% • trascina per spostare</span>}
+              {zoom === 1 && <span className="zoom-info">🖱️ scroll per zoom</span>}
             </div>
             {photoMarkers.find(m => m.index === selectedPhoto.index) && (
               <span className="gps-marker-info">📍 GPS: {photoMarkers.find(m => m.index === selectedPhoto.index).position.join(', ')}</span>

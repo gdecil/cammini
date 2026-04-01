@@ -887,6 +887,7 @@ export default function GPXViewer() {
           
           <SavedTracks
             tracks={savedTracks}
+            filterId={trackIdParam}
             onLoad={(name) => {
               handleLoadTrack(name)
               const track = savedTracks[name]
