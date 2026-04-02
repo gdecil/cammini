@@ -203,8 +203,35 @@ export default function RoutePlanner() {
   const [geocodeLoading, setGeocodeLoading] = useState(false)
   const [geocodeShowResults, setGeocodeShowResults] = useState(false)
   const [activeWaypointId, setActiveWaypointId] = useState(null)
+  const [loadedTotals, setLoadedTotals] = useState({ distance: 0, ascent: 0, descent: 0 })
 
   const handleResizeStart = (e) => { e.preventDefault(); setIsResizing(true) }
+
+  // Calculate totals for loaded routes
+  useEffect(() => {
+    if (loadedRoutes.length === 0) {
+      setLoadedTotals({ distance: 0, ascent: 0, descent: 0 })
+      return
+    }
+    
+    let totalDist = 0, totalAscent = 0, totalDescent = 0
+    loadedRoutes.forEach(route => {
+      totalDist += route.distanceNum || 0
+      if (route.elevation && Array.isArray(route.elevation)) {
+        const elevations = route.elevation
+        for (let i = 1; i < elevations.length; i++) {
+          const diff = elevations[i] - elevations[i-1]
+          if (diff > 0) totalAscent += diff
+          else totalDescent += Math.abs(diff)
+        }
+      }
+    })
+    setLoadedTotals({ 
+      distance: totalDist, 
+      ascent: Math.round(totalAscent), 
+      descent: Math.round(totalDescent) 
+    })
+  }, [loadedRoutes])
 
   useEffect(() => {
     const handleMouseMove = (e) => { if (isResizing) setSidebarWidth(Math.min(550, Math.max(280, window.innerWidth - e.clientX))) }
@@ -776,7 +803,16 @@ export default function RoutePlanner() {
           <div className="routes-list">
             {getSortedRoutes().map(route => { const isLoaded = loadedRouteIds.includes(route.id); return (<div key={route.id} className={`route-item ${isLoaded ? 'loaded' : ''}`}><div className="route-info"><strong>{isLoaded ? '✅ ' : ''}{route.name}</strong><small>{route.distance ? `${route.distance} km` : ''}{route.elevation ? ' 📊' : ''} • {new Date(route.createdAt || route.created_at).toLocaleDateString()}</small></div><div className="route-actions"><button className={`small-btn ${isLoaded ? 'loaded-btn' : ''}`} onClick={() => toggleLoadRoute(route)}>{isLoaded ? '✓ Sovrapposto' : '+ Aggiungi'}</button><button className="small-btn edit-btn" onClick={() => handleLoadRoute(route)}>✏️ Modifica</button><button className="small-btn" onClick={() => handleExportRoute(route)}>📥</button><button className="small-btn danger" onClick={() => handleDeleteRoute(route)}>🗑️</button></div></div>) })}
           </div>
-          {loadedRoutes.length > 0 && <div><div className="clear-loaded-routes-bar"><span>{loadedRoutes.length} itinerari sovrapposti</span><button className="clear-loaded-btn" onClick={clearLoadedRoutes}>✕ Rimuovi tutti</button></div><button className="toggle-loaded-profile-btn" onClick={() => setShowLoadedProfile(!showLoadedProfile)}>{showLoadedProfile ? '📍 Nascondi profili' : '📊 Mostra profili'}</button>
+          {loadedRoutes.length > 0 && <div>
+            <div className="clear-loaded-routes-bar"><span>{loadedRoutes.length} itinerari sovrapposti</span><button className="clear-loaded-btn" onClick={clearLoadedRoutes}>✕ Rimuovi tutti</button></div>
+            {loadedRoutes.length > 1 && (
+              <div className="loaded-totals-bar">
+                <span>📊 Totali: <strong>{loadedTotals.distance.toFixed(1)} km</strong></span>
+                <span>⬆️ {loadedTotals.ascent} m</span>
+                <span>⬇️ {loadedTotals.descent} m</span>
+              </div>
+            )}
+            <button className="toggle-loaded-profile-btn" onClick={() => setShowLoadedProfile(!showLoadedProfile)}>{showLoadedProfile ? '📍 Nascondi profili' : '📊 Mostra profili'}</button>
             {showLoadedProfile && loadedRoutes.length > 0 && <div className="loaded-profiles-container"><div className="profile-tabs">{loadedRoutes.map((route) => (<button key={route.id} className={`profile-tab ${activeProfileTab === `route_${route.id}` ? 'active' : ''}`} onClick={() => setActiveProfileTab(`route_${route.id}`)}><span className="tab-color-indicator" style={{ backgroundColor: route.color }} /><span className="tab-name" title={route.name}>{route.name}</span></button>))}</div>{activeProfileTab && <LoadRouteProfile route={loadedRoutes.find(r => `route_${r.id}` === activeProfileTab)} selectedIndex={loadedTrackHoverIndex} onHover={(index, routeId) => { setLoadedTrackHoverIndex(index); setHoveredLoadedRouteId(routeId) }} onHoverEnd={() => { setLoadedTrackHoverIndex(null); setHoveredLoadedRouteId(null) }} />}</div>}
           </div>}
           </div>
