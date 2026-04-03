@@ -57,13 +57,21 @@ function MarkersLayer({ markers, onMarkerClick }) {
       const color = markerData.type === 'track' ? '#3498db' : '#e74c3c'
       const icon = L.divIcon({
         className: 'home-marker',
-        html: `<div style="position: relative; background-color: ${color}; width: 18px; height: 18px; border-radius: 50% 50% 50% 0; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.4); transform: rotate(-45deg);"></div><span style="position: absolute; top: -18px; left: 50%; transform: translateX(-50%); background: white; color: ${color}; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.2);">${markerData.name}</span>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
+        html: `<div style="position: relative; background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
       })
-      const marker = L.marker(markerData.position, { icon })
-      if (onMarkerClick) marker.on('click', () => onMarkerClick(markerData))
+      const marker = L.marker(markerData.position, { icon, interactive: true })
+      if (onMarkerClick) {
+        marker.on('click', () => {
+          console.log('Marker click detected:', markerData)
+          onMarkerClick(markerData)
+        })
+      }
+      marker.bindTooltip(markerData.name, { permanent: true, direction: 'top', className: 'home-marker-tooltip', offset: [0, -14] })
       marker.addTo(map)
+      const el = marker.getElement()
+      if (el) el.style.cursor = 'pointer'
       markersRef.current[index] = marker
     })
     return () => { Object.values(markersRef.current).forEach(marker => { if (marker) marker.remove() }) }
@@ -166,7 +174,7 @@ export default function Map({
             opacity={0.7}
           />
         )}
-        {markers.length > 0 && onMarkerClick && <MarkersLayer markers={markers} onMarkerClick={onMarkerClick} />}
+        {markers.length > 0 && <MarkersLayer markers={markers} onMarkerClick={onMarkerClick} />}
         {multipleTracks.length > 0 && multipleTracks.map((track, index) => (
           track.coordinates.length > 0 && <Polyline key={index} positions={track.coordinates} color={track.color || '#3498db'} weight={4} opacity={0.8} />
         ))}

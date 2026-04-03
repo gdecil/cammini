@@ -34,14 +34,11 @@ const downloadGPX = (gpx, filename) => {
 export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, onRename, hasTrack }) {
   const [sortBy, setSortBy] = useState('date') // 'name' or 'date'
   const [sortOrder, setSortOrder] = useState('desc') // 'asc' or 'desc'
-  const [editingName, setEditingName] = useState(null)
+  const [editingId, setEditingId] = useState(null)
   const [newName, setNewName] = useState('')
   
   // Convert tracks object to array and sort
-  const trackArray = Object.keys(tracks).map(name => ({
-    name,
-    ...tracks[name]
-  }))
+  const trackArray = Object.values(tracks)
   
   const sortedTracks = [...trackArray].sort((a, b) => {
     let comparison = 0
@@ -61,17 +58,17 @@ export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, o
     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
   }
 
-  const handleRename = (oldName) => {
-    if (newName && newName.trim() && newName !== oldName) {
-      onRename(oldName, newName.trim())
+  const handleRename = (id) => {
+    if (newName && newName.trim() && newName !== tracks[id].name) {
+      onRename(id, newName.trim())
     }
-    setEditingName(null)
+    setEditingId(null)
     setNewName('')
   }
 
-  const startRename = (name) => {
-    setEditingName(name)
-    setNewName(name)
+  const startRename = (id) => {
+    setEditingId(id)
+    setNewName(tracks[id].name)
   }
 
   const handleExport = (track) => {
@@ -83,7 +80,7 @@ export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, o
 
   return (
     <div className="saved-tracks-container">
-      <h3>📁 Tracce Salvate</h3>
+      <h3>📁 Tracce Salvate ({Object.keys(tracks).length})</h3>
       
       <div className="tracks-actions">
         <button 
@@ -132,20 +129,20 @@ export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, o
             {({ index, style }) => {
               const track = sortedTracks[index];
               return (
-                <div style={style} key={track.name} className="track-item">
+                <div style={style} key={track.id} className="track-item">
                   <div className="track-info">
-                    {editingName === track.name ? (
+                    {editingId === track.id ? (
                       <input
                         type="text"
                         className="rename-input"
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
-                        onBlur={() => handleRename(track.name)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleRename(track.name)}
+                        onBlur={() => handleRename(track.id)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleRename(track.id)}
                         autoFocus
                       />
                     ) : (
-                      <strong onDoubleClick={() => startRename(track.name)} title="Doppio click per rinominare">
+                      <strong onDoubleClick={() => startRename(track.id)} title="Doppio click per rinominare">
                         {track.name}
                       </strong>
                     )}
@@ -154,7 +151,7 @@ export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, o
                   <div className="track-actions">
                     <button 
                       className="small-btn"
-                      onClick={() => onLoad(track.name)}
+                      onClick={() => onLoad(track.id)}
                     >
                       Carica
                     </button>
@@ -167,7 +164,7 @@ export default function SavedTracks({ tracks, onLoad, onDelete, onSaveCurrent, o
                     </button>
                     <button 
                       className="small-btn danger"
-                      onClick={() => onDelete(track.name)}
+                      onClick={() => onDelete(track.id)}
                     >
                       Elimina
                     </button>

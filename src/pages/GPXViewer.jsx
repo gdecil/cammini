@@ -36,6 +36,7 @@ export default function GPXViewer() {
   // Multiple tracks state
   const [tracks, setTracks] = useState([]) // Array of {id, name, coordinates, elevation, color, visible, gpxContent}
   const [activeTrackId, setActiveTrackId] = useState(null) // Currently selected track for profile view
+  const [trackFilterActive, setTrackFilterActive] = useState(!!trackIdParam)
 
   // Sidebar resize handlers
   const handleResizeStart = (e) => {
@@ -93,12 +94,16 @@ export default function GPXViewer() {
   // Carica automaticamente la traccia se specificato nella query string
   useEffect(() => {
     if (trackIdParam && Object.keys(savedTracks).length > 0) {
-      const trackEntry = Object.entries(savedTracks).find(([name, track]) => track.id === trackIdParam)
-      if (trackEntry) {
-        handleLoadTrack(trackEntry[0])
+      if (savedTracks[trackIdParam]) {
+        handleLoadTrack(trackIdParam)
       }
     }
   }, [trackIdParam, savedTracks])
+
+  // Update filter active state
+  useEffect(() => {
+    setTrackFilterActive(!!trackIdParam)
+  }, [trackIdParam])
 
   const loadSavedTracks = async () => {
     try {
@@ -154,7 +159,7 @@ export default function GPXViewer() {
           
           console.log(`Track "${track.name}": ${coordinates.length} coordinates, ${elevationData ? elevationData.length : 0} elevations`)
           
-          tracksObj[track.name] = {
+          tracksObj[track.id] = {
             ...track,
             coordinates,
             elevation: elevationData,
@@ -370,8 +375,8 @@ export default function GPXViewer() {
     return gpx
   }
 
-  const handleLoadTrack = (name) => {
-    const track = savedTracks[name]
+  const handleLoadTrack = (id) => {
+    const track = savedTracks[id]
     if (track && track.coordinates) {
       // Verify coordinates is an array of pairs [lat, lon]
       const coordinates = Array.isArray(track.coordinates) && track.coordinates.length > 0 && Array.isArray(track.coordinates[0]) 
@@ -379,7 +384,7 @@ export default function GPXViewer() {
         : null
       
       if (!coordinates) {
-        showMessage(`Errore nel caricamento traccia "${name}"`, 'error')
+        showMessage(`Errore nel caricamento traccia "${track.name}"`, 'error')
         return
       }
       
@@ -401,41 +406,42 @@ export default function GPXViewer() {
           // If elevation doesn't match coordinates, generate simulated data
           const simulatedGPX = generateGPXFromCoordinates(coordinates)
           setGpxContent(simulatedGPX)
-          console.warn(`Elevation data mismatch: ${track.elevation?.length || 0} elevations vs ${coordinates.length} coordinates for track "${name}"`)
+          console.warn(`Elevation data mismatch: ${track.elevation?.length || 0} elevations vs ${coordinates.length} coordinates for track "${track.name}"`)
         }
       }
-      showMessage(`Traccia "${name}" caricata${track.elevation && Array.isArray(track.elevation) && track.elevation.length === coordinates.length ? ' con profilo altimetrico' : ' (profilo simulato)'}`, 'info')
+      showMessage(`Traccia "${track.name}" caricata${track.elevation && Array.isArray(track.elevation) && track.elevation.length === coordinates.length ? ' con profilo altimetrico' : ' (profilo simulato)'}`, 'info')
     }
   }
 
-  const handleDeleteTrack = async (name) => {
-    if (!confirm(`Eliminare la traccia "${name}"?`)) return
-    const track = savedTracks[name]
-    if (!track || !track.id) return
+  const handleDeleteTrack = async (id) => {
+    const track = savedTracks[id]
+    if (!track) return
+    if (!confirm(`Eliminare la traccia "${track.name}"?`)) return
 
     try {
-      await fetch(`${API_URL}/tracks/${track.id}`, { method: 'DELETE' })
-      showMessage(`Traccia "${name}" eliminata`, 'success')
-      loadSavedTracks()
+      await fetch(`${API_URL}/tracks/${id}`, { method: 'DELETE' })
+      delete savedTracks[id]
+      setSavedTracks({...savedTracks})
+      showMessage(`Traccia "${track.name}" eliminata`, 'success')
     } catch (error) {
       showMessage('Errore nell\'eliminare la traccia', 'error')
     }
   }
 
-  const handleRenameTrack = async (oldName, newName) => {
-    const track = savedTracks[oldName]
-    if (!track || !track.id) return
+  const handleRenameTrack = async (id, newName) => {
+    const track = savedTracks[id]
+    if (!track) return
 
     try {
-      const res = await fetch(`${API_URL}/tracks/${track.id}`, {
+      const res = await fetch(`${API_URL}/tracks/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName })
       })
       if (res.ok) {
+        savedTracks[id] = { ...track, name: newName }
+        setSavedTracks({...savedTracks})
         showMessage(`Traccia rinominata in "${newName}"`, 'success')
-        setSavedTracks({})
-        loadSavedTracks()
       } else {
         showMessage('Errore nel rinominare la traccia', 'error')
       }
@@ -691,6 +697,9 @@ export default function GPXViewer() {
     setIsProfileDetached(!isProfileDetached)
   }
 
+  // Filter tracks if trackIdParam is present
+  const filteredTracks = trackFilterActive && trackIdParam && savedTracks[trackIdParam] ? { [trackIdParam]: savedTracks[trackIdParam] } : savedTracks
+
   return (
     <div className={`gpx-viewer ${isFullscreen ? 'fullscreen-mode' : ''}`}>
       <div className="map-section">
@@ -902,11 +911,11 @@ export default function GPXViewer() {
           )}
           
           <SavedTracks
-            tracks={savedTracks}
+            tracks={filteredTracks}
             filterId={trackIdParam}
-            onLoad={(name) => {
-              handleLoadTrack(name)
-              const track = savedTracks[name]
+            onLoad={(id) => {
+              handleLoadTrack(id)
+              const track = savedTracks[id]
               if (track) {
                 setActiveTrackId(track.id)
                 setPhotoGalleryKey(k => k + 1)

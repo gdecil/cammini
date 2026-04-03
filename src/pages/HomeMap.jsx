@@ -148,6 +148,7 @@ export default function HomeMap() {
   }
 
   const handleMarkerClick = (item) => {
+    console.log('[HomeMap] marker clicked', item)
     // Se è un percorso calcolato, vai a RoutePlanner, altrimenti a GPXViewer
     if (item.type === 'route') {
       navigate(`/route?routeId=${item.id}`)
@@ -160,23 +161,26 @@ export default function HomeMap() {
     item.name.toLowerCase().includes(filterText.toLowerCase())
   )
 
-  // Prepara i marker quando savedItems cambia
+  // Prepara i marker quando savedItems o filterText cambiano
   useEffect(() => {
-    const newMarkers = filteredItems.map(item => {
-      const center = getCenterPoint(item)
-      if (!center) return null
-      
-      return {
-        id: item.id,
-        name: item.name,
-        type: item.type,
-        position: center,
-        coordinates: item.coordinates
-      }
-    }).filter(m => m !== null)
-    
+    const newMarkers = savedItems
+      .filter(item => item.name.toLowerCase().includes(filterText.toLowerCase()))
+      .map(item => {
+        const center = getCenterPoint(item)
+        if (!center) return null
+
+        return {
+          id: item.id,
+          name: item.name,
+          type: item.type,
+          position: center,
+          coordinates: item.coordinates
+        }
+      })
+      .filter(m => m !== null)
+
     setMarkers(newMarkers)
-  }, [filteredItems])
+  }, [savedItems, filterText])
 
   console.log('Rendering HomeMap, savedItems:', savedItems.length, 'markers:', markers.length)
 
