@@ -86,6 +86,17 @@ npm start
 npm run dev
 ```
 
+- `npm run dev` - Avvia Vite dev server
+
+- `npm run build` - Build per produzione
+
+- `npm run preview` - Preview build
+
+- `npm run server` - Avvia il server backend
+
+- `npm run start` - Avvia server e dev contemporaneamente
+
+
 L'app sarà disponibile su:
 - Frontend: http://localhost:5174
 - Backend API: http://localhost:3001
@@ -131,7 +142,6 @@ src/
 - **OpenTopoData API** - Elevazione
 - **Overpass API** - Punti di interesse (POI)
 - **SQL.js** - Database locale (tracce salvate)
-- **Electron** - App desktop
 
 ## 🆕 Ultime Novità (v1.1.0)
 
