@@ -89,8 +89,8 @@ export default function HomeMap() {
   const navigate = useNavigate()
   const [filterText, setFilterText] = useState('')
   const [markers, setMarkers] = useState([])
-  const [sidebarWidth, setSidebarWidth] = useState(320)
-  const [sidebarMode, setSidebarMode] = useState('normal') // normal or wide
+  const [sidebarWidth, setSidebarWidth] = useState(500)
+  const [sidebarMode, setSidebarMode] = useState('wide') // normal or wide
   const [isResizing, setIsResizing] = useState(false)
   const [showHikingOverlay, setShowHikingOverlay] = useState(false)
 
