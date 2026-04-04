@@ -26,3 +26,17 @@
   outline: none;
   border-color: #3498db;
 }
+
+/* Large labels: increase text size in UI elements */
+.layer-selector.large-labels {
+  font-size: 110%;
+}
+
+.layer-selector.large-labels select {
+  font-size: 1rem;
+  padding: 0.6rem;
+}
+
+.layer-selector.large-labels .selector-group label {
+  font-size: 1rem;
+}

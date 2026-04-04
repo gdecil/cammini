@@ -30,6 +30,7 @@ export default function GPXViewer() {
   const [sidebarWidth, setSidebarWidth] = useState(520)
   const [sidebarMode, setSidebarMode] = useState('wide')
   const [showHikingOverlay, setShowHikingOverlay] = useState(false)
+  const [largeLabels, setLargeLabels] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const [searchParams] = useSearchParams()
   const trackIdParam = searchParams.get('trackId')
@@ -716,6 +717,8 @@ export default function GPXViewer() {
           onLayerChange={setCurrentLayer} 
           showHikingOverlay={showHikingOverlay}
           onOverlayToggle={setShowHikingOverlay}
+          largeLabels={largeLabels}
+          onLargeLabelsToggle={setLargeLabels}
         />
         
         <button 

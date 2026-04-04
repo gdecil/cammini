@@ -93,6 +93,7 @@ export default function HomeMap() {
   const [sidebarMode, setSidebarMode] = useState('wide') // normal or wide
   const [isResizing, setIsResizing] = useState(false)
   const [showHikingOverlay, setShowHikingOverlay] = useState(false)
+  const [largeLabels, setLargeLabels] = useState(false)
 
   useEffect(() => {
     loadSavedItems()
@@ -200,6 +201,8 @@ export default function HomeMap() {
           onLayerChange={setCurrentLayer} 
           showHikingOverlay={showHikingOverlay}
           onOverlayToggle={setShowHikingOverlay}
+          largeLabels={largeLabels}
+          onLargeLabelsToggle={setLargeLabels}
         />
       </div>
       

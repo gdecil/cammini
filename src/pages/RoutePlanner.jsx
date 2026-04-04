@@ -178,6 +178,7 @@ export default function RoutePlanner() {
   const [isResizing, setIsResizing] = useState(false)
   const [searchParams] = useSearchParams()
   const [showHikingOverlay, setShowHikingOverlay] = useState(false)
+  const [largeLabels, setLargeLabels] = useState(false)
   const routeIdParam = searchParams.get('routeId')
   const [routingService, setRoutingService] = useState('osrm')
   const [isCalculating, setIsCalculating] = useState(false)
@@ -380,7 +381,7 @@ export default function RoutePlanner() {
   const handleMapClick = (e) => { if (isFullscreen) return; const { lat, lng } = e.latlng; setWaypoints([...waypoints, { id: Date.now(), lat: lat.toFixed(6), lng: lng.toFixed(6), name: `Punto ${waypoints.length + 1}` }]) }
   const addWaypoint = () => { setWaypoints([...waypoints, { id: Date.now(), lat: '', lng: '', name: `Tappa ${waypoints.length + 1}` }]) }
   const updateWaypoint = (id, field, value) => { setWaypoints(waypoints.map(wp => wp.id === id ? { ...wp, [field]: value } : wp)) }
-  const removeWaypoint = (id) => { const nw = waypoints.filter(wp => wp.id !== id); setWaypoints(nw); if (nw.length >= 2) setTimeout(() => calculateMultiRoute(), 0) }
+  const removeWaypoint = (id) => { const nw = waypoints.filter(wp => wp.id !== id); setWaypoints(nw) }
   const handleDragStart = (e, index) => { setDraggedIndex(index); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/html', e.target) }
   const handleDragOver = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }
   const handleDragEnter = (e) => { e.preventDefault() }
@@ -393,7 +394,8 @@ export default function RoutePlanner() {
   }
   const handleWaypointDragEnd = (index, newLat, newLng) => {
     const nw = waypoints.map((wp, i) => i === index ? { ...wp, lat: newLat.toFixed(6), lng: newLng.toFixed(6) } : wp)
-    setWaypoints(nw); if (nw.length >= 2) setTimeout(() => calculateMultiRoute(), 0)
+    setWaypoints(nw)
+    // Rimosso ricalcolo automatico - si preme manualmente "Calcola"
   }
   const clearAllWaypoints = () => { setWaypoints([]); setRouteCoordinates([]); setDistance(null); setElevationData(null); setSegments([]); setShowRouteProfile(false) }
 
@@ -787,7 +789,7 @@ export default function RoutePlanner() {
   return (
     <div className={`route-planner ${isFullscreen ? 'fullscreen-mode' : ''}`}>
       <div className="map-section">
-        <LayerSelector currentLayer={currentLayer} onLayerChange={setCurrentLayer} showHikingOverlay={showHikingOverlay} onOverlayToggle={setShowHikingOverlay} />
+        <LayerSelector currentLayer={currentLayer} onLayerChange={setCurrentLayer} showHikingOverlay={showHikingOverlay} onOverlayToggle={setShowHikingOverlay} largeLabels={largeLabels} onLargeLabelsToggle={setLargeLabels} />
         <button className="fullscreen-btn" onClick={() => { !isFullscreen ? document.documentElement.requestFullscreen?.() : document.exitFullscreen?.(); setIsFullscreen(!isFullscreen) }} title={isFullscreen ? 'Esci' : 'Fullscreen'}>{isFullscreen ? '✕' : '⛶'}</button>
         <Map trackCoordinates={routeCoordinates} startMarker={validWaypoints.length > 0 ? [parseFloat(validWaypoints[0].lat), parseFloat(validWaypoints[0].lng)] : null}
           endMarker={validWaypoints.length > 1 ? [parseFloat(validWaypoints[validWaypoints.length - 1].lat), parseFloat(validWaypoints[validWaypoints.length - 1].lng)] : null}
